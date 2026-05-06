@@ -18,6 +18,7 @@ public class PaisDAOImpl implements IPaisDAO {
         p.setIdPais(rs.getInt("idPais"));
         p.setNombre(rs.getString("nombre"));
         p.setContinente(rs.getString("continente"));
+        p.setEsAnfitrion(rs.getBoolean("esAnfitrion"));
         return p;
     }
 
@@ -27,7 +28,7 @@ public class PaisDAOImpl implements IPaisDAO {
         try (PreparedStatement ps = getConn().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, p.getNombre());
             ps.setString(2, p.getContinente());
-            ps.setBoolean(3, false);
+            ps.setBoolean(3, p.isEsAnfitrion());
             ps.executeUpdate();
             ResultSet keys = ps.getGeneratedKeys();
             if (keys.next()) p.setIdPais(keys.getInt(1));
@@ -36,11 +37,12 @@ public class PaisDAOImpl implements IPaisDAO {
 
     @Override
     public void actualizar(Pais p) throws Exception {
-        String sql = "UPDATE Pais SET nombre=?, continente=? WHERE idPais=?";
+        String sql = "UPDATE Pais SET nombre=?, continente=?, esAnfitrion=? WHERE idPais=?";
         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
             ps.setString(1, p.getNombre());
             ps.setString(2, p.getContinente());
-            ps.setInt(3, p.getIdPais());
+            ps.setBoolean(3, p.isEsAnfitrion());
+            ps.setInt(4, p.getIdPais());
             ps.executeUpdate();
         }
     }

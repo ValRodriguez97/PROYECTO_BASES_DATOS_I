@@ -73,7 +73,22 @@ public class SistemaSeguridadService {
         usuarioDAO.insertar(nuevo);
     }
 
+    /**
+     * Cambia la contraseña de un usuario. Solo lo permite si:
+     *   - hay sesión activa, Y
+     *   - el usuario en sesión es Administrador, O
+     *   - el usuario en sesión es el dueño de la cuenta (cambio propio).
+     */
     public void cambiarContrasena(int idUsuario, String nuevaContrasena) throws Exception {
+        if (usuarioActual == null) throw new Exception("No hay sesión activa.");
+        boolean esAdmin   = usuarioActual.puedeCrearUsuarios();
+        boolean esElMismo = usuarioActual.getIdUsuario() == idUsuario;
+        if (!esAdmin && !esElMismo) {
+            throw new Exception("Solo el Administrador o el dueño de la cuenta puede cambiar la contraseña.");
+        }
+        if (nuevaContrasena == null || nuevaContrasena.length() < 4) {
+            throw new Exception("La nueva contraseña debe tener al menos 4 caracteres.");
+        }
         Optional<Usuario> opt = usuarioDAO.buscarPorId(idUsuario);
         if (opt.isEmpty()) throw new Exception("Usuario no encontrado.");
         Usuario u = opt.get();

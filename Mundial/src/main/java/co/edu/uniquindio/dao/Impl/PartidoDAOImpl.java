@@ -51,6 +51,53 @@ public class PartidoDAOImpl implements IPartidoDAO {
         }
     }
 
+    /**
+     * Crea el Partido y sus dos DetallePartido (LOCAL y VISITANTE) en una sola
+     * transacción. Si cualquier paso falla se hace rollback completo para evitar
+     * partidos huérfanos sin equipos.
+     */
+    @Override
+    public void insertarConDetalles(Partido p) throws Exception {
+        if (p.getDetalles() == null || p.getDetalles().size() != 2) {
+            throw new Exception("Un Partido debe llevar exactamente 2 DetallePartido (LOCAL y VISITANTE).");
+        }
+        Connection conn = getConn();
+        boolean autoCommitOriginal = conn.getAutoCommit();
+        try {
+            conn.setAutoCommit(false);
+
+            String sqlPartido = "INSERT INTO Partido (horaFecha, idGrupo, idEstadio) VALUES (?,?,?)";
+            try (PreparedStatement ps = conn.prepareStatement(sqlPartido, Statement.RETURN_GENERATED_KEYS)) {
+                ps.setTimestamp(1, Timestamp.valueOf(p.getHoraFecha()));
+                ps.setInt(2, p.getGrupo().getIdGrupo());
+                ps.setInt(3, p.getEstadio().getIdEstadio());
+                ps.executeUpdate();
+                ResultSet keys = ps.getGeneratedKeys();
+                if (keys.next()) p.setIdPartido(keys.getInt(1));
+            }
+
+            String sqlDetalle = "INSERT INTO DetallePartido (idPartido, idEquipo, condicion, golesAnotados) " +
+                                "VALUES (?,?,?,?)";
+            try (PreparedStatement ps = conn.prepareStatement(sqlDetalle)) {
+                for (DetallePartido d : p.getDetalles()) {
+                    d.setIdPartido(p.getIdPartido());
+                    ps.setInt(1, d.getIdPartido());
+                    ps.setInt(2, d.getEquipo().getIdEquipo());
+                    ps.setString(3, d.getCondicion().name());
+                    ps.setInt(4, d.getGolesAnotados());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+            conn.commit();
+        } catch (Exception ex) {
+            try { conn.rollback(); } catch (Exception ignored) {}
+            throw ex;
+        } finally {
+            try { conn.setAutoCommit(autoCommitOriginal); } catch (Exception ignored) {}
+        }
+    }
+
     @Override
     public void actualizar(Partido p) throws Exception {
         String sql = "UPDATE Partido SET horaFecha=?, idGrupo=?, idEstadio=? WHERE idPartido=?";
@@ -102,8 +149,8 @@ public class PartidoDAOImpl implements IPartidoDAO {
                         "FROM Partido pa " +
                         "JOIN Grupo g   ON pa.idGrupo   = g.idGrupo " +
                         "JOIN Estadio est ON pa.idEstadio = est.idEstadio " +
-                        "LEFT JOIN DetallePartido dp1 ON dp1.idPartido = pa.idPartido AND dp1.condicion = 'Local' " +
-                        "LEFT JOIN DetallePartido dp2 ON dp2.idPartido = pa.idPartido AND dp2.condicion = 'Visitante' " +
+                        "LEFT JOIN DetallePartido dp1 ON dp1.idPartido = pa.idPartido AND dp1.condicion = 'LOCAL' " +
+                        "LEFT JOIN DetallePartido dp2 ON dp2.idPartido = pa.idPartido AND dp2.condicion = 'VISITANTE' " +
                         "LEFT JOIN Equipo e1 ON e1.idEquipo = dp1.idEquipo " +
                         "LEFT JOIN Equipo e2 ON e2.idEquipo = dp2.idEquipo " +
                         "WHERE pa.idEstadio = ? " +
@@ -161,35 +208,34 @@ public class PartidoDAOImpl implements IPartidoDAO {
         return lista;
     }
 
-    // ---- Consulta c: Equipo más costoso por país sede ----
-    // Retorna Object[]{String paisSede, String nombreEquipo, BigDecimal valorTotal}
+    // ---- Consulta a3: Equipo más costoso que juega en cada país anfitrión ----
+    // Filtra por Pais.esAnfitrion = TRUE para no depender de la grafía del nombre.
+    // Suma el valor de mercado por equipo UNA sola vez (en una subconsulta) para
+    // evitar el doble conteo que se produce al hacer JOIN con Partido.
+    // Retorna Object[]{ String paisSede, String nombreEquipo, BigDecimal valorTotal }
     @Override
     public List<Object[]> equipoMasCostosoPorPaisSede() throws Exception {
         List<Object[]> lista = new ArrayList<>();
         String sql =
-                "SELECT ps.nombre AS pais_sede, e.nombre AS equipo, SUM(j.valorMercado) AS valor_total " +
-                        "FROM Equipo e " +
-                        "JOIN EquipoGrupo eg ON e.idEquipo = eg.idEquipo " +
-                        "JOIN Jugador j ON j.idEquipo = e.idEquipo " +
-                        "JOIN Partido pa ON pa.idGrupo = eg.idGrupo " +
-                        "JOIN Estadio est ON pa.idEstadio = est.idEstadio " +
-                        "JOIN Ciudad ci ON est.idCiudad = ci.idCiudad " +
-                        "JOIN Pais ps ON ci.idPais = ps.idPais " +
-                        "WHERE ps.nombre IN ('México','Estados Unidos','Canadá') " +
-                        "GROUP BY ps.nombre, e.idEquipo, e.nombre " +
-                        "HAVING (ps.nombre, SUM(j.valorMercado)) IN (" +
-                        "  SELECT ps2.nombre, MAX(sub.valor) FROM (" +
-                        "    SELECT ps2.nombre, e2.idEquipo, SUM(j2.valorMercado) AS valor " +
-                        "    FROM Equipo e2 JOIN EquipoGrupo eg2 ON e2.idEquipo=eg2.idEquipo " +
-                        "    JOIN Jugador j2 ON j2.idEquipo=e2.idEquipo " +
-                        "    JOIN Partido pa2 ON pa2.idGrupo=eg2.idGrupo " +
-                        "    JOIN Estadio est2 ON pa2.idEstadio=est2.idEstadio " +
-                        "    JOIN Ciudad ci2 ON est2.idCiudad=ci2.idCiudad " +
-                        "    JOIN Pais ps2 ON ci2.idPais=ps2.idPais " +
-                        "    WHERE ps2.nombre IN ('México','Estados Unidos','Canadá') " +
-                        "    GROUP BY ps2.nombre, e2.idEquipo" +
-                        "  ) sub GROUP BY ps2.nombre" +
-                        ") ORDER BY ps.nombre";
+                "SELECT pais_sede, equipo, valor_total FROM (" +
+                "  SELECT ps.nombre AS pais_sede, e.nombre AS equipo, ev.valor_total, " +
+                "         ROW_NUMBER() OVER (PARTITION BY ps.idPais ORDER BY ev.valor_total DESC, e.nombre) AS rn " +
+                "  FROM Pais ps " +
+                "  JOIN Ciudad ci   ON ci.idPais   = ps.idPais " +
+                "  JOIN Estadio est ON est.idCiudad = ci.idCiudad " +
+                "  JOIN Partido pa  ON pa.idEstadio = est.idEstadio " +
+                "  JOIN EquipoGrupo eg ON eg.idGrupo = pa.idGrupo " +
+                "  JOIN Equipo e    ON e.idEquipo = eg.idEquipo " +
+                "  JOIN ( " +
+                "      SELECT idEquipo, SUM(valorMercado) AS valor_total " +
+                "      FROM Jugador " +
+                "      GROUP BY idEquipo " +
+                "  ) ev ON ev.idEquipo = e.idEquipo " +
+                "  WHERE ps.esAnfitrion = TRUE " +
+                "  GROUP BY ps.idPais, ps.nombre, e.idEquipo, e.nombre, ev.valor_total " +
+                ") ranked " +
+                "WHERE rn = 1 " +
+                "ORDER BY pais_sede";
         try (Statement st = getConn().createStatement();
              ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) {

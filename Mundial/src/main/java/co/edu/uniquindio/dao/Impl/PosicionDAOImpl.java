@@ -48,4 +48,23 @@ public class PosicionDAOImpl implements IPosicionDAO {
         }
         return lista;
     }
+
+    @Override
+    public void actualizar(Posicion p) throws Exception {
+        try (PreparedStatement ps = getConn().prepareStatement(
+                "UPDATE Posicion SET nombre=? WHERE idPosicion=?")) {
+            ps.setString(1, p.getNombre());
+            ps.setInt(2, p.getIdPosicion());
+            ps.executeUpdate();
+        }
+    }
+
+    @Override
+    public void eliminar(int id) throws Exception {
+        try (PreparedStatement ps = getConn().prepareStatement(
+                "DELETE FROM Posicion WHERE idPosicion=?")) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        }
+    }
 }

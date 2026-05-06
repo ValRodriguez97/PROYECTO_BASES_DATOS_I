@@ -116,3 +116,44 @@ CREATE TABLE Bitacora (
     fechaHoraSalida DATETIME NULL,
     FOREIGN KEY (idUsuario) REFERENCES Usuario(idUsuario)
 );
+
+-- ============================================================
+-- TRIGGERS DE INTEGRIDAD DE NEGOCIO
+-- ============================================================
+
+-- Solo puede existir UN administrador en el sistema.
+DELIMITER $$
+CREATE TRIGGER trg_unico_admin_insert
+BEFORE INSERT ON Usuario
+FOR EACH ROW
+BEGIN
+    IF NEW.tipoUsuario = 'ADMINISTRADOR'
+       AND (SELECT COUNT(*) FROM Usuario WHERE tipoUsuario = 'ADMINISTRADOR') > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Solo puede existir un Administrador en el sistema.';
+    END IF;
+END$$
+
+CREATE TRIGGER trg_unico_admin_update
+BEFORE UPDATE ON Usuario
+FOR EACH ROW
+BEGIN
+    IF NEW.tipoUsuario = 'ADMINISTRADOR' AND OLD.tipoUsuario <> 'ADMINISTRADOR'
+       AND (SELECT COUNT(*) FROM Usuario WHERE tipoUsuario = 'ADMINISTRADOR') > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Solo puede existir un Administrador en el sistema.';
+    END IF;
+END$$
+
+-- Cada grupo del Mundial tiene máximo 4 equipos.
+CREATE TRIGGER trg_max_equipos_grupo
+BEFORE INSERT ON EquipoGrupo
+FOR EACH ROW
+BEGIN
+    IF (SELECT COUNT(*) FROM EquipoGrupo WHERE idGrupo = NEW.idGrupo) >= 4 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Un grupo no puede tener mas de 4 equipos.';
+    END IF;
+END$$
+
+DELIMITER ;

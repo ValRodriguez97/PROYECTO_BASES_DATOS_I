@@ -517,19 +517,8 @@ INSERT INTO DetallePartido (idPartido, idEquipo, condicion) VALUES
 
 -- ============================================================
 -- USUARIO ADMINISTRADOR INICIAL
--- Contraseña: Admin2026! → SHA-256
--- IMPORTANTE: Cambia la contraseña en el primer login.
+-- Usuario: admin    Contraseña: Admin2026!  (SHA-256 generado por MySQL)
+-- IMPORTANTE: cambia la contraseña en el primer login.
 -- ============================================================
 INSERT INTO Usuario (nombreUsuario, contrasena, tipoUsuario)
-VALUES (
-  'admin',
-  '7a1f5f3e9b2c0d4e8f6a3b1c9d2e4f0a8b7c5d3e1f9a2b4c6d8e0f1a3b5c7d9',
-  'ADMINISTRADOR'
-);
-
--- Nota: el hash arriba es un placeholder. Para generar el hash real de "Admin2026!" ejecuta:
--- SELECT SHA2('Admin2026!', 256);
--- Y reemplaza el valor en el UPDATE:
-UPDATE Usuario
-SET contrasena = SHA2('Admin2026!', 256)
-WHERE nombreUsuario = 'admin';
+VALUES ('admin', SHA2('Admin2026!', 256), 'ADMINISTRADOR');

@@ -8,6 +8,8 @@ import java.util.Optional;
 public interface IPartidoDAO {
 
     void              insertar(Partido partido)   throws Exception;
+    /** Inserta el Partido + sus DetallePartido (LOCAL y VISITANTE) en una sola transacción. */
+    void              insertarConDetalles(Partido partido) throws Exception;
     void              actualizar(Partido partido) throws Exception;
     void              eliminar(int id)       throws Exception;
     Optional<Partido> buscarPorId(int id)    throws Exception;

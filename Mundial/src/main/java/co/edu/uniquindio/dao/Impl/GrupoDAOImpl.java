@@ -14,6 +14,36 @@ public class GrupoDAOImpl implements IGrupoDAO {
     }
 
     @Override
+    public void insertar(Grupo g) throws Exception {
+        try (PreparedStatement ps = getConn().prepareStatement(
+                "INSERT INTO Grupo (letra) VALUES (?)", Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, String.valueOf(g.getLetra()));
+            ps.executeUpdate();
+            ResultSet keys = ps.getGeneratedKeys();
+            if (keys.next()) g.setIdGrupo(keys.getInt(1));
+        }
+    }
+
+    @Override
+    public void actualizar(Grupo g) throws Exception {
+        try (PreparedStatement ps = getConn().prepareStatement(
+                "UPDATE Grupo SET letra=? WHERE idGrupo=?")) {
+            ps.setString(1, String.valueOf(g.getLetra()));
+            ps.setInt(2, g.getIdGrupo());
+            ps.executeUpdate();
+        }
+    }
+
+    @Override
+    public void eliminar(int id) throws Exception {
+        try (PreparedStatement ps = getConn().prepareStatement(
+                "DELETE FROM Grupo WHERE idGrupo=?")) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        }
+    }
+
+    @Override
     public Optional<Grupo> buscarPorId(int id) throws Exception {
         try (PreparedStatement ps = getConn().prepareStatement(
                 "SELECT * FROM Grupo WHERE idGrupo=?")) {
