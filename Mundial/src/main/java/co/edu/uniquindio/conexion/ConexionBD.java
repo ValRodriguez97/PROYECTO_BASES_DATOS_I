@@ -6,15 +6,18 @@ import java.sql.SQLException;
 
 public class ConexionBD {
 
-    private static final String HOST = "localhost";
-    private static final String PORT = "3306";
-    private static final String DATABASE = "mundial2026";
-    private static final String USER = "root";
-    private static final String PASSWORD = ""; //Bajo cambio
+    private static final String HOST     = System.getenv().getOrDefault("DB_HOST",     "localhost");
+    private static final String PORT     = System.getenv().getOrDefault("DB_PORT",     "3306");
+    private static final String DATABASE = System.getenv().getOrDefault("DB_NAME",     "mundial2026");
+    private static final String USER     = System.getenv().getOrDefault("DB_USER",     "root");
+    private static final String PASSWORD = System.getenv().getOrDefault("DB_PASSWORD", ""); //bajo cambio
 
     private static final String URL =
             "jdbc:mysql://" + HOST + ":" + PORT + "/" + DATABASE
-                    + "?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true";
+            + "?useSSL=false"
+            + "&serverTimezone=America/Bogota"
+            + "&allowPublicKeyRetrieval=true"
+            + "&characterEncoding=UTF-8";
 
     private static ConexionBD instancia;
     private Connection conexion;
@@ -23,12 +26,13 @@ public class ConexionBD {
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
             this.conexion = DriverManager.getConnection(URL, USER, PASSWORD);
+            this.conexion.setAutoCommit(true);
         } catch (ClassNotFoundException e) {
             throw new SQLException("Driver MySQL no encontrado: " + e.getMessage());
         }
     }
 
-    public static ConexionBD getInstance() throws SQLException {
+    public static synchronized ConexionBD getInstance() throws SQLException {
         if (instancia == null || instancia.conexion.isClosed()) {
             instancia = new ConexionBD();
         }
