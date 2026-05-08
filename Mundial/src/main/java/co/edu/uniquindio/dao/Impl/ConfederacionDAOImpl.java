@@ -28,8 +28,9 @@ public class ConfederacionDAOImpl implements IConfederacionDAO {
             ps.setString(1, c.getNombre());
             ps.setString(2, c.getSigla());
             ps.executeUpdate();
-            ResultSet keys = ps.getGeneratedKeys();
-            if (keys.next()) c.setIdConfederacion(keys.getInt(1));
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) c.setIdConfederacion(keys.getInt(1));
+            }
         }
     }
 
@@ -58,8 +59,9 @@ public class ConfederacionDAOImpl implements IConfederacionDAO {
         try (PreparedStatement ps = getConn().prepareStatement(
                 "SELECT * FROM Confederacion WHERE idConfederacion=?")) {
             ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            }
         }
     }
 

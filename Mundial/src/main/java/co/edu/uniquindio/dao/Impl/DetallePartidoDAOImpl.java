@@ -77,8 +77,9 @@ public class DetallePartidoDAOImpl implements IDetallePartidoDAO {
                 SELECT_BASE + "WHERE dp.idPartido=? AND dp.idEquipo=?")) {
             ps.setInt(1, idPartido);
             ps.setInt(2, idEquipo);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            }
         }
     }
 
@@ -88,8 +89,9 @@ public class DetallePartidoDAOImpl implements IDetallePartidoDAO {
         try (PreparedStatement ps = getConn().prepareStatement(
                 SELECT_BASE + "WHERE dp.idPartido=? ORDER BY dp.condicion")) {
             ps.setInt(1, idPartido);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) lista.add(mapear(rs));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) lista.add(mapear(rs));
+            }
         }
         return lista;
     }

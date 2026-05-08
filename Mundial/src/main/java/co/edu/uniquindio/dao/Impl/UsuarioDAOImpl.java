@@ -36,8 +36,9 @@ public class UsuarioDAOImpl implements IUsuarioDAO {
             ps.setString(2, u.getContraseña());
             ps.setString(3, u.getTipoUsuario().name());
             ps.executeUpdate();
-            ResultSet keys = ps.getGeneratedKeys();
-            if (keys.next()) u.setIdUsuario(keys.getInt(1));
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) u.setIdUsuario(keys.getInt(1));
+            }
         }
     }
 
@@ -67,8 +68,9 @@ public class UsuarioDAOImpl implements IUsuarioDAO {
         try (PreparedStatement ps = getConn().prepareStatement(
                 "SELECT * FROM Usuario WHERE idUsuario=?")) {
             ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            }
         }
     }
 
@@ -77,8 +79,9 @@ public class UsuarioDAOImpl implements IUsuarioDAO {
         try (PreparedStatement ps = getConn().prepareStatement(
                 "SELECT * FROM Usuario WHERE nombreUsuario=?")) {
             ps.setString(1, nombre);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            }
         }
     }
 

@@ -22,8 +22,9 @@ public class BitacoraDAOImpl implements IBitacoraDAO {
             ps.setInt(1, idUsuario);
             ps.setTimestamp(2, Timestamp.valueOf(ingreso));
             ps.executeUpdate();
-            ResultSet keys = ps.getGeneratedKeys();
-            if (keys.next()) return keys.getInt(1);
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) return keys.getInt(1);
+            }
         }
         return -1;
     }
@@ -42,7 +43,7 @@ public class BitacoraDAOImpl implements IBitacoraDAO {
     public List<Bitacora> listarPorRango(LocalDateTime desde, LocalDateTime hasta) throws Exception {
         List<Bitacora> lista = new ArrayList<>();
         String sql = "SELECT * FROM Bitacora WHERE fechaHoraIngreso BETWEEN ? AND ? " +
-                "OR fechaHoraSalida BETWEEN ? AND ? ORDER BY fechaHoraIngreso";
+                "OR (fechaHoraSalida BETWEEN ? AND ?) ORDER BY fechaHoraIngreso";
         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
             Timestamp tDesde = Timestamp.valueOf(desde);
             Timestamp tHasta = Timestamp.valueOf(hasta);
@@ -50,15 +51,16 @@ public class BitacoraDAOImpl implements IBitacoraDAO {
             ps.setTimestamp(2, tHasta);
             ps.setTimestamp(3, tDesde);
             ps.setTimestamp(4, tHasta);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                Bitacora b = new Bitacora();
-                b.setIdBitacora(rs.getInt("idBitacora"));
-                b.setIdUsuario(rs.getInt("idUsuario"));
-                b.setFechaHoraIngreso(rs.getTimestamp("fechaHoraIngreso").toLocalDateTime());
-                Timestamp salida = rs.getTimestamp("fechaHoraSalida");
-                if (salida != null) b.setFechaHoraSalida(salida.toLocalDateTime());
-                lista.add(b);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Bitacora b = new Bitacora();
+                    b.setIdBitacora(rs.getInt("idBitacora"));
+                    b.setIdUsuario(rs.getInt("idUsuario"));
+                    b.setFechaHoraIngreso(rs.getTimestamp("fechaHoraIngreso").toLocalDateTime());
+                    Timestamp salida = rs.getTimestamp("fechaHoraSalida");
+                    if (salida != null) b.setFechaHoraSalida(salida.toLocalDateTime());
+                    lista.add(b);
+                }
             }
         }
         return lista;
@@ -70,15 +72,16 @@ public class BitacoraDAOImpl implements IBitacoraDAO {
         try (PreparedStatement ps = getConn().prepareStatement(
                 "SELECT * FROM Bitacora WHERE idUsuario=? ORDER BY fechaHoraIngreso DESC")) {
             ps.setInt(1, idUsuario);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                Bitacora b = new Bitacora();
-                b.setIdBitacora(rs.getInt("idBitacora"));
-                b.setIdUsuario(rs.getInt("idUsuario"));
-                b.setFechaHoraIngreso(rs.getTimestamp("fechaHoraIngreso").toLocalDateTime());
-                Timestamp salida = rs.getTimestamp("fechaHoraSalida");
-                if (salida != null) b.setFechaHoraSalida(salida.toLocalDateTime());
-                lista.add(b);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Bitacora b = new Bitacora();
+                    b.setIdBitacora(rs.getInt("idBitacora"));
+                    b.setIdUsuario(rs.getInt("idUsuario"));
+                    b.setFechaHoraIngreso(rs.getTimestamp("fechaHoraIngreso").toLocalDateTime());
+                    Timestamp salida = rs.getTimestamp("fechaHoraSalida");
+                    if (salida != null) b.setFechaHoraSalida(salida.toLocalDateTime());
+                    lista.add(b);
+                }
             }
         }
         return lista;

@@ -46,8 +46,9 @@ public class PartidoDAOImpl implements IPartidoDAO {
             ps.setInt(2, p.getGrupo().getIdGrupo());
             ps.setInt(3, p.getEstadio().getIdEstadio());
             ps.executeUpdate();
-            ResultSet keys = ps.getGeneratedKeys();
-            if (keys.next()) p.setIdPartido(keys.getInt(1));
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) p.setIdPartido(keys.getInt(1));
+            }
         }
     }
 
@@ -72,8 +73,9 @@ public class PartidoDAOImpl implements IPartidoDAO {
                 ps.setInt(2, p.getGrupo().getIdGrupo());
                 ps.setInt(3, p.getEstadio().getIdEstadio());
                 ps.executeUpdate();
-                ResultSet keys = ps.getGeneratedKeys();
-                if (keys.next()) p.setIdPartido(keys.getInt(1));
+                try (ResultSet keys = ps.getGeneratedKeys()) {
+                    if (keys.next()) p.setIdPartido(keys.getInt(1));
+                }
             }
 
             String sqlDetalle = "INSERT INTO DetallePartido (idPartido, idEquipo, condicion, golesAnotados) " +
@@ -122,8 +124,9 @@ public class PartidoDAOImpl implements IPartidoDAO {
     public Optional<Partido> buscarPorId(int id) throws Exception {
         try (PreparedStatement ps = getConn().prepareStatement(SELECT_BASE + "WHERE pa.idPartido=?")) {
             ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            }
         }
     }
 
@@ -157,11 +160,12 @@ public class PartidoDAOImpl implements IPartidoDAO {
                         "ORDER BY pa.horaFecha";
         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
             ps.setInt(1, idEstadio);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                Partido p = mapear(rs);
-                agregarDetallesDesdeRs(p, rs);
-                lista.add(p);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Partido p = mapear(rs);
+                    agregarDetallesDesdeRs(p, rs);
+                    lista.add(p);
+                }
             }
         }
         return lista;
@@ -202,8 +206,9 @@ public class PartidoDAOImpl implements IPartidoDAO {
         List<Partido> lista = new ArrayList<>();
         try (PreparedStatement ps = getConn().prepareStatement(SELECT_BASE + "WHERE pa.idGrupo=?")) {
             ps.setInt(1, idGrupo);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) lista.add(mapear(rs));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) lista.add(mapear(rs));
+            }
         }
         return lista;
     }

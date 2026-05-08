@@ -43,8 +43,9 @@ public class CiudadDAOImpl implements ICiudadDAO {
             ps.setString(1, c.getNombre());
             ps.setInt(2, c.getPais().getIdPais());
             ps.executeUpdate();
-            ResultSet keys = ps.getGeneratedKeys();
-            if (keys.next()) c.setIdCiudad(keys.getInt(1));
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) c.setIdCiudad(keys.getInt(1));
+            }
         }
     }
 
@@ -73,8 +74,9 @@ public class CiudadDAOImpl implements ICiudadDAO {
         try (PreparedStatement ps = getConn().prepareStatement(
                 SELECT_BASE + "WHERE ci.idCiudad=?")) {
             ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            }
         }
     }
 
@@ -94,8 +96,9 @@ public class CiudadDAOImpl implements ICiudadDAO {
         try (PreparedStatement ps = getConn().prepareStatement(
                 SELECT_BASE + "WHERE p.idPais=? ORDER BY ci.nombre")) {
             ps.setInt(1, idPais);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) lista.add(mapear(rs));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) lista.add(mapear(rs));
+            }
         }
         return lista;
     }

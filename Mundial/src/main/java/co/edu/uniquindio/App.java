@@ -28,7 +28,8 @@ public class App {
         System.out.println("=== Sistema Mundial 2026 - Backend ===");
         System.out.println("Verificando conexión a la base de datos...");
         try {
-            ConexionBD.getInstance();
+            ConexionBD bd = ConexionBD.getInstance();
+            bd.verificarVersionMySQL();
             System.out.println("Conexión exitosa.\n");
         } catch (Exception e) {
             System.err.println("ERROR de conexión: " + e.getMessage());

@@ -20,8 +20,9 @@ public class PosicionDAOImpl implements IPosicionDAO {
                 Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, p.getNombre());
             ps.executeUpdate();
-            ResultSet keys = ps.getGeneratedKeys();
-            if (keys.next()) p.setIdPosicion(keys.getInt(1));
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) p.setIdPosicion(keys.getInt(1));
+            }
         }
     }
 
@@ -30,9 +31,10 @@ public class PosicionDAOImpl implements IPosicionDAO {
         try (PreparedStatement ps = getConn().prepareStatement(
                 "SELECT * FROM Posicion WHERE idPosicion=?")) {
             ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return Optional.of(new Posicion(rs.getInt("idPosicion"), rs.getString("nombre")));
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(new Posicion(rs.getInt("idPosicion"), rs.getString("nombre")));
+                }
             }
             return Optional.empty();
         }

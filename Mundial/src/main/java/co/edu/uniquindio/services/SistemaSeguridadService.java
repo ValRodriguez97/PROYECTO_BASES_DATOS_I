@@ -65,6 +65,14 @@ public class SistemaSeguridadService {
             throw new Exception("Solo puede existir un Administrador en el sistema.");
         }
 
+        if (nombreUsuario == null || nombreUsuario.isBlank()) {
+            throw new Exception("El nombre de usuario no puede estar vacío.");
+        }
+
+        if (contrasena == null || contrasena.length() < 4) {
+            throw new Exception("La contraseña debe tener al menos 4 caracteres.");
+        }
+
         String hash = hashContrasena(contrasena);
         Usuario nuevo = switch (tipo) {
             case TRADICIONAL -> new UsuarioTradicional(0, nombreUsuario, hash);

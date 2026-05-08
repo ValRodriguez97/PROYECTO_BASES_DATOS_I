@@ -59,8 +59,9 @@ public class JugadorDAOImpl implements IJugadorDAO {
             ps.setInt(7, j.getEquipo().getIdEquipo());
             ps.setInt(8, j.getPosicion().getIdPosicion());
             ps.executeUpdate();
-            ResultSet keys = ps.getGeneratedKeys();
-            if (keys.next()) j.setIdJugador(keys.getInt(1));
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) j.setIdJugador(keys.getInt(1));
+            }
         }
     }
 
@@ -95,8 +96,9 @@ public class JugadorDAOImpl implements IJugadorDAO {
     public Optional<Jugador> buscarPorId(int id) throws Exception {
         try (PreparedStatement ps = getConn().prepareStatement(SELECT_BASE + "WHERE j.idJugador=?")) {
             ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() ? Optional.of(mapearSimple(rs)) : Optional.empty();
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(mapearSimple(rs)) : Optional.empty();
+            }
         }
     }
 
@@ -115,8 +117,9 @@ public class JugadorDAOImpl implements IJugadorDAO {
         List<Jugador> lista = new ArrayList<>();
         try (PreparedStatement ps = getConn().prepareStatement(SELECT_BASE + "WHERE j.idEquipo=?")) {
             ps.setInt(1, idEquipo);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) lista.add(mapearSimple(rs));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) lista.add(mapearSimple(rs));
+            }
         }
         return lista;
     }
@@ -157,7 +160,7 @@ public class JugadorDAOImpl implements IJugadorDAO {
                 "SELECT e.nombre AS equipo, COUNT(j.idJugador) AS cantidad " +
                         "FROM Equipo e " +
                         "LEFT JOIN Jugador j ON j.idEquipo = e.idEquipo " +
-                        "   AND TIMESTAMPDIFF(YEAR, j.fechaNacimiento, CURDATE()) < 21 " +
+                        "   AND TIMESTAMPDIFF(YEAR, j.fechaNacimiento, '2026-06-11') < 21 " +
                         "GROUP BY e.idEquipo, e.nombre " +
                         "ORDER BY cantidad DESC, e.nombre";
         try (Statement st = getConn().createStatement();
@@ -185,8 +188,9 @@ public class JugadorDAOImpl implements IJugadorDAO {
             ps.setBigDecimal(3, estaturaMin);
             ps.setBigDecimal(4, estaturaMax);
             if (idEquipo > 0) ps.setInt(5, idEquipo);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) lista.add(mapearSimple(rs));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) lista.add(mapearSimple(rs));
+            }
         }
         return lista;
     }

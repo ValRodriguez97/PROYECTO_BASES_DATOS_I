@@ -48,8 +48,9 @@ public class EstadioDAOImpl implements IEstadioDAO {
             ps.setInt(2, e.getCapacidad());
             ps.setInt(3, e.getCiudad().getIdCiudad());
             ps.executeUpdate();
-            ResultSet keys = ps.getGeneratedKeys();
-            if (keys.next()) e.setIdEstadio(keys.getInt(1));
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) e.setIdEstadio(keys.getInt(1));
+            }
         }
     }
 
@@ -79,8 +80,9 @@ public class EstadioDAOImpl implements IEstadioDAO {
         try (PreparedStatement ps = getConn().prepareStatement(
                 SELECT_BASE + "WHERE est.idEstadio=?")) {
             ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            }
         }
     }
 

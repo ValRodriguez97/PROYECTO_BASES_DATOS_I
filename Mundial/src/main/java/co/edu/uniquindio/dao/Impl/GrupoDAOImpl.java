@@ -19,8 +19,9 @@ public class GrupoDAOImpl implements IGrupoDAO {
                 "INSERT INTO Grupo (letra) VALUES (?)", Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, String.valueOf(g.getLetra()));
             ps.executeUpdate();
-            ResultSet keys = ps.getGeneratedKeys();
-            if (keys.next()) g.setIdGrupo(keys.getInt(1));
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) g.setIdGrupo(keys.getInt(1));
+            }
         }
     }
 
@@ -48,10 +49,11 @@ public class GrupoDAOImpl implements IGrupoDAO {
         try (PreparedStatement ps = getConn().prepareStatement(
                 "SELECT * FROM Grupo WHERE idGrupo=?")) {
             ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return Optional.of(new Grupo(rs.getInt("idGrupo"),
-                        rs.getString("letra").charAt(0)));
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(new Grupo(rs.getInt("idGrupo"),
+                            rs.getString("letra").charAt(0)));
+                }
             }
             return Optional.empty();
         }
@@ -86,13 +88,14 @@ public class GrupoDAOImpl implements IGrupoDAO {
             "ORDER BY valorTotal DESC";
         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
             ps.setInt(1, idConfederacion);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                lista.add(new Object[]{
-                    rs.getString("equipo"),
-                    rs.getString("confederacion"),
-                    rs.getBigDecimal("valorTotal")
-                });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(new Object[]{
+                        rs.getString("equipo"),
+                        rs.getString("confederacion"),
+                        rs.getBigDecimal("valorTotal")
+                    });
+                }
             }
         }
         return lista;

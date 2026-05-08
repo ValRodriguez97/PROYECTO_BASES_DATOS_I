@@ -34,8 +34,9 @@ public class DirectorTecnicoDAOImpl implements IDirectorTecnicoDAO {
             ps.setString(3, dt.getNacionalidad());
             ps.setDate(4, Date.valueOf(dt.getFechaNacimiento()));
             ps.executeUpdate();
-            ResultSet keys = ps.getGeneratedKeys();
-            if (keys.next()) dt.setIdDT(keys.getInt(1));
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) dt.setIdDT(keys.getInt(1));
+            }
         }
     }
 
@@ -67,8 +68,9 @@ public class DirectorTecnicoDAOImpl implements IDirectorTecnicoDAO {
         try (PreparedStatement ps = getConn().prepareStatement(
                 "SELECT * FROM DirectorTecnico WHERE idDt=?")) {
             ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            }
         }
     }
 

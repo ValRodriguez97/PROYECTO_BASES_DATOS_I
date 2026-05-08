@@ -38,8 +38,9 @@ public class EquipoGrupoDAOImpl implements IEquipoGrupoDAO {
         try (PreparedStatement ps = getConn().prepareStatement(
                 "SELECT COUNT(*) FROM EquipoGrupo WHERE idGrupo=?")) {
             ps.setInt(1, idGrupo);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() ? rs.getInt(1) : 0;
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
         }
     }
 
@@ -48,8 +49,9 @@ public class EquipoGrupoDAOImpl implements IEquipoGrupoDAO {
         try (PreparedStatement ps = getConn().prepareStatement(
                 "SELECT 1 FROM EquipoGrupo WHERE idEquipo=? LIMIT 1")) {
             ps.setInt(1, idEquipo);
-            ResultSet rs = ps.executeQuery();
-            return rs.next();
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
         }
     }
 }

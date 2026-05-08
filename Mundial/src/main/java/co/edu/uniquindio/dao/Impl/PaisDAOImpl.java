@@ -30,8 +30,9 @@ public class PaisDAOImpl implements IPaisDAO {
             ps.setString(2, p.getContinente());
             ps.setBoolean(3, p.isEsAnfitrion());
             ps.executeUpdate();
-            ResultSet keys = ps.getGeneratedKeys();
-            if (keys.next()) p.setIdPais(keys.getInt(1));
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) p.setIdPais(keys.getInt(1));
+            }
         }
     }
 
@@ -59,8 +60,9 @@ public class PaisDAOImpl implements IPaisDAO {
     public Optional<Pais> buscarPorId(int id) throws Exception {
         try (PreparedStatement ps = getConn().prepareStatement("SELECT * FROM Pais WHERE idPais=?")) {
             ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            }
         }
     }
 

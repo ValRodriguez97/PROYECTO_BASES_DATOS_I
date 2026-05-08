@@ -61,8 +61,9 @@ public class EquipoDAOImpl implements IEquipoDAO {
             ps.setInt(4, e.getConfederacion().getIdConfederacion());
             ps.setInt(5, e.getDirectorTecnico().getIdDT());
             ps.executeUpdate();
-            ResultSet keys = ps.getGeneratedKeys();
-            if (keys.next()) e.setIdEquipo(keys.getInt(1));
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) e.setIdEquipo(keys.getInt(1));
+            }
         }
     }
 
@@ -92,8 +93,9 @@ public class EquipoDAOImpl implements IEquipoDAO {
     public Optional<Equipo> buscarPorId(int id) throws Exception {
         try (PreparedStatement ps = getConn().prepareStatement(SELECT_BASE + "WHERE e.idEquipo=?")) {
             ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            }
         }
     }
 
@@ -113,8 +115,9 @@ public class EquipoDAOImpl implements IEquipoDAO {
         try (PreparedStatement ps = getConn().prepareStatement(
                 SELECT_BASE + "WHERE e.idConfederacion=? ORDER BY e.rankingFifa")) {
             ps.setInt(1, idConf);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) lista.add(mapear(rs));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) lista.add(mapear(rs));
+            }
         }
         return lista;
     }
@@ -126,8 +129,9 @@ public class EquipoDAOImpl implements IEquipoDAO {
                 "JOIN EquipoGrupo eg ON e.idEquipo=eg.idEquipo WHERE eg.idGrupo=?";
         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
             ps.setInt(1, idGrupo);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) lista.add(mapear(rs));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) lista.add(mapear(rs));
+            }
         }
         return lista;
     }

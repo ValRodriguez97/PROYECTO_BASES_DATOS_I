@@ -2,7 +2,9 @@ package co.edu.uniquindio.conexion;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 public class ConexionBD {
 
@@ -52,6 +54,20 @@ public class ConexionBD {
             System.err.println("Error al cerrar la conexión: " + e.getMessage());
         } finally {
             instancia = null;
+        }
+    }
+
+    public void verificarVersionMySQL() throws SQLException {
+        try (Statement st = conexion.createStatement();
+        ResultSet rs = st.executeQuery("SELECT VERSION()")){
+            if (rs.next()) {
+                String version = rs.getString(1);
+                int mayorVersion = Integer.parseInt(version.split("\\.")[0]);
+                if (mayorVersion < 8) {
+                    throw new SQLException("Se requiere MySQL 8 o superior. Versión detectada: " + version);
+                }
+            }
+            
         }
     }
 }
