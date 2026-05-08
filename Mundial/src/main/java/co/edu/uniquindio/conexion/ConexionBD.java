@@ -8,11 +8,11 @@ import java.sql.Statement;
 
 public class ConexionBD {
 
-    private static final String HOST     = System.getenv().getOrDefault("DB_HOST",     "localhost");
-    private static final String PORT     = System.getenv().getOrDefault("DB_PORT",     "3306");
-    private static final String DATABASE = System.getenv().getOrDefault("DB_NAME",     "mundial2026");
-    private static final String USER     = System.getenv().getOrDefault("DB_USER",     "root");
-    private static final String PASSWORD = System.getenv().getOrDefault("DB_PASSWORD", ""); //bajo cambio
+    private static final String HOST = System.getenv().getOrDefault("DB_HOST", "localhost");
+    private static final String PORT = System.getenv().getOrDefault("DB_PORT", "3306");
+    private static final String DATABASE = System.getenv().getOrDefault("DB_NAME", "mundial2026");
+    private static final String USER = System.getenv().getOrDefault("DB_USER", "root");
+    private static final String PASSWORD = System.getenv().getOrDefault("DB_PASSWORD", "Poseidon"); //bajo cambio
 
     private static final String URL =
             "jdbc:mysql://" + HOST + ":" + PORT + "/" + DATABASE
