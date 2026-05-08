@@ -26,6 +26,18 @@
 
     <dependencies>
 
+        <!-- FlatLaf - Modern Look & Feel -->
+        <dependency>
+            <groupId>com.formdev</groupId>
+            <artifactId>flatlaf</artifactId>
+            <version>3.4.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.formdev</groupId>
+            <artifactId>flatlaf-extras</artifactId>
+            <version>3.4.1</version>
+        </dependency>
+
         <!-- Driver JDBC para conectar Java con MySQL -->
         <dependency>
             <groupId>com.mysql</groupId>
@@ -38,6 +50,12 @@
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
             <version>${pdfbox.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.miglayout</groupId>
+            <artifactId>miglayout-swing</artifactId>
+            <version>11.3</version>
         </dependency>
 
         <!-- Librería para pruebas unitarias con JUnit 5 -->
