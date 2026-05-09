@@ -4,16 +4,16 @@ import javax.swing.border.AbstractBorder;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
 
-public class RoundedBorder extends AbstractBorder  {
-    
+public class RoundedBorder extends AbstractBorder {
+
       private final int radius;
       private final Color color;
-      
+
       public RoundedBorder(int radius, Color color) {
             this.radius = radius;
-            this.color  = color;
+            this.color = color;
       }
-      
+
       @Override
       public void paintBorder(Component c, Graphics g, int x, int y, int w, int h) {
             Graphics2D g2 = (Graphics2D) g.create();
@@ -25,12 +25,14 @@ public class RoundedBorder extends AbstractBorder  {
 
       @Override
       public Insets getBorderInsets(Component c) {
-            return new Insets(radius / 3, radius / 3, radius / 3, radius / 3);
+            int ins = Math.max(1, radius / 4);
+            return new Insets(ins, ins, ins, ins);
       }
-      
+
       @Override
       public Insets getBorderInsets(Component c, Insets insets) {
-            insets.set(radius / 3, radius / 3, radius / 3, radius / 3);
+            int ins = Math.max(1, radius / 4);
+            insets.set(ins, ins, ins, ins);
             return insets;
       }
 }

@@ -14,22 +14,26 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-public class ReportsPanel extends JPanel {
+      public class ReportsPanel extends JPanel {
 
       private final GestionDatosService gestion;
-      private final MundialService  mundial;
+      private final MundialService mundial;
 
       private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
       private static final String[][] REPORTS = {
-            {"b1", "📋", "Bitácora por Rango de Fecha",
-                  "Exporta todos los registros de ingreso/salida en un rango de fecha/hora."},
-            {"b2", "👤", "Jugadores por Peso, Estatura y Equipo",
-                  "Filtra jugadores por rangos de peso y estatura, opcionalmente por equipo."},
-            {"b3", "💰", "Valor Total por Confederación",
-                  "Muestra el valor total de mercado de los jugadores de cada equipo, agrupado por confederación."},
-            {"b4", "🌎", "Equipos por País Anfitrión",
-                  "Lista los equipos y sus países de origen que jugarán en cada país sede."},
+            {"B1", "📋", "Bitácora por Rango de Fecha",
+                  "Exporta todos los registros de ingreso/salida en un rango de fechas."},
+            {"B2", "👤", "Jugadores por Peso, Estatura y Equipo",
+                  "Filtra jugadores por rangos de peso y estatura, con opción de equipo específico."},
+            {"B3", "💰", "Valor Total por Confederación",
+                  "Valor total de mercado de jugadores por equipo, agrupado por confederación."},
+            {"B4", "🌎", "Equipos por País Anfitrión",
+                  "Lista los equipos que jugarán en cada país sede (México, EE.UU., Canadá)."},
+      };
+
+      private static final Color[] ACCENTS = {
+            UIColors.PURPLE, UIColors.BLUE, UIColors.TURQUOISE, UIColors.MAGENTA
       };
 
       public ReportsPanel(GestionDatosService gestion, MundialService mundial) {
@@ -51,70 +55,68 @@ public class ReportsPanel extends JPanel {
             JPanel content = new JPanel();
             content.setBackground(UIColors.BG_PAGE);
             content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-            content.setBorder(BorderFactory.createEmptyBorder(32, 32, 32, 32));
+            content.setBorder(BorderFactory.createEmptyBorder(28, 28, 28, 28));
 
             content.add(buildHeader());
-            content.add(Box.createVerticalStrut(24));
+            content.add(Box.createVerticalStrut(22));
 
-            JPanel grid = new JPanel(new GridLayout(2, 2, 20, 20));
+            JPanel grid = new JPanel(new GridLayout(2, 2, 18, 18));
             grid.setOpaque(false);
-            grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, 600));
-
-            grid.add(buildReportCard(0));
-            grid.add(buildReportCard(1));
-            grid.add(buildReportCard(2));
-            grid.add(buildReportCard(3));
-
+            grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, 620));
+            for (int i = 0; i < 4; i++) grid.add(buildReportCard(i));
             content.add(grid);
+
             return content;
       }
 
       private JPanel buildHeader() {
             JPanel p = new JPanel(new BorderLayout());
             p.setOpaque(false);
+            p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+
             JPanel left = new JPanel();
             left.setOpaque(false);
             left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
             left.add(UIFactory.heading("Reportes PDF"));
             left.add(Box.createVerticalStrut(4));
             left.add(UIFactory.subheading("Genera los 4 reportes requeridos en formato PDF"));
+
             p.add(left, BorderLayout.WEST);
             return p;
       }
 
       private JPanel buildReportCard(int index) {
+            Color accent = ACCENTS[index];
             String[] r = REPORTS[index];
-            Color[] palette = {
-                  UIColors.PURPLE, UIColors.BLUE, UIColors.TURQUOISE, UIColors.MAGENTA
-            };
-            Color accent = palette[index];
 
             JPanel card = new JPanel(new BorderLayout());
             card.setBackground(Color.WHITE);
-            card.setBorder(new RoundedBorder(14, UIColors.BORDER));
+            card.setBorder(new RoundedBorder(10, UIColors.BORDER));
 
-            JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 14)) {
+            JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 12)) {
                   @Override protected void paintComponent(Graphics g) {
-                  Graphics2D g2 = (Graphics2D) g.create();
-                  g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 18));
-                  g2.fillRect(0, 0, getWidth(), getHeight());
-                  g2.dispose();
-                  super.paintComponent(g);
+                        Graphics2D g2 = (Graphics2D) g.create();
+                        g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 18));
+                        g2.fillRect(0, 0, getWidth(), getHeight());
+                        g2.dispose();
+                        super.paintComponent(g);
                   }
             };
             header.setOpaque(false);
             header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, UIColors.BORDER));
 
+            // Ícono circular
             JPanel iconBox = new JPanel() {
-                  { setPreferredSize(new Dimension(44, 44)); setOpaque(false); }
+                  { setPreferredSize(new Dimension(40, 40)); setOpaque(false); }
                   @Override protected void paintComponent(Graphics g) {
                         Graphics2D g2 = (Graphics2D) g.create();
                         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                         g2.setColor(accent);
-                        g2.fill(new RoundRectangle2D.Float(0, 0, 44, 44, 12, 12));
+                        g2.fill(new RoundRectangle2D.Float(0, 0, 40, 40, 10, 10));
                         g2.setColor(Color.WHITE);
-                        g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 22));
-                        g2.drawString(r[1], 8, 32);
+                        g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 18));
+                        FontMetrics fm = g2.getFontMetrics();
+                        g2.drawString(r[1], (40 - fm.stringWidth(r[1])) / 2, (40 + fm.getAscent() - fm.getDescent()) / 2);
                         g2.dispose();
                   }
             };
@@ -122,8 +124,8 @@ public class ReportsPanel extends JPanel {
             JPanel labelCol = new JPanel();
             labelCol.setOpaque(false);
             labelCol.setLayout(new BoxLayout(labelCol, BoxLayout.Y_AXIS));
-            JLabel tag = UIFactory.badge(r[0].toUpperCase(), new Color(
-                  accent.getRed(), accent.getGreen(), accent.getBlue(), 30), accent);
+            JLabel tag   = UIFactory.badge(r[0], new Color(
+                  accent.getRed(), accent.getGreen(), accent.getBlue(), 25), accent);
             JLabel title = new JLabel(r[2]);
             title.setFont(UIFonts.HEADING_SM);
             title.setForeground(UIColors.TEXT_PRIMARY);
@@ -138,30 +140,31 @@ public class ReportsPanel extends JPanel {
             JPanel body = new JPanel();
             body.setOpaque(false);
             body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
-            body.setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
+            body.setBorder(BorderFactory.createEmptyBorder(14, 18, 14, 18));
 
             JLabel desc = new JLabel("<html><body style='width:220px'>" + r[3] + "</body></html>");
             desc.setFont(UIFonts.BODY_SM);
             desc.setForeground(UIColors.TEXT_SECONDARY);
             desc.setAlignmentX(LEFT_ALIGNMENT);
             body.add(desc);
-            body.add(Box.createVerticalStrut(14));
+            body.add(Box.createVerticalStrut(12));
 
-            switch (index) {
-                  case 0 -> body.add(buildParamsB1());
-                  case 1 -> body.add(buildParamsB2());
-                  case 2 -> body.add(buildParamsB3());
-                  case 3 -> body.add(buildParamsB4(accent));
-            }
+            JPanel params = switch (index) {
+                  case 0 -> buildB1Params(accent);
+                  case 1 -> buildB2Params(accent);
+                  case 2 -> buildB3Params(accent);
+                  default -> buildB4Params(accent);
+            };
+            params.setAlignmentX(LEFT_ALIGNMENT);
+            body.add(params);
 
             card.add(body, BorderLayout.CENTER);
             return card;
       }
 
-      private JPanel buildParamsB1() {
+      private JPanel buildB1Params(Color accent) {
             JPanel p = new JPanel(new GridLayout(0, 2, 8, 8));
             p.setOpaque(false);
-            p.setAlignmentX(LEFT_ALIGNMENT);
 
             JTextField desdeF = UIFactory.textField(LocalDate.now().minusDays(7).format(FMT));
             JTextField hastaF = UIFactory.textField(LocalDate.now().format(FMT));
@@ -169,21 +172,19 @@ public class ReportsPanel extends JPanel {
             p.add(UIFactory.formLabel("Desde (yyyy-MM-dd)")); p.add(desdeF);
             p.add(UIFactory.formLabel("Hasta (yyyy-MM-dd)")); p.add(hastaF);
 
-            JButton btn = magentaButton("Generar PDF — b1", UIColors.PURPLE);
+            JButton btn = accentButton("Generar PDF", accent);
             btn.setAlignmentX(LEFT_ALIGNMENT);
-            btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+            btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
             btn.addActionListener(e -> {
+                  setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                   try {
                   LocalDateTime desde = LocalDate.parse(desdeF.getText().trim(), FMT).atStartOfDay();
                   LocalDateTime hasta = LocalDate.parse(hastaF.getText().trim(), FMT).atTime(LocalTime.MAX);
-                  setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                   String ruta = mundial.generarReporteBitacora(desde, hasta);
-                  setCursor(Cursor.getDefaultCursor());
                   JOptionPane.showMessageDialog(this, "PDF generado:\n" + ruta);
                   } catch (Exception ex) {
-                  setCursor(Cursor.getDefaultCursor());
                   JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                  }
+                  } finally { setCursor(Cursor.getDefaultCursor()); }
             });
 
             JPanel wrap = new JPanel();
@@ -195,54 +196,48 @@ public class ReportsPanel extends JPanel {
             return wrap;
       }
 
-
-      private JPanel buildParamsB2() {
+      private JPanel buildB2Params(Color accent) {
             JPanel p = new JPanel(new GridLayout(0, 2, 8, 8));
             p.setOpaque(false);
-            p.setAlignmentX(LEFT_ALIGNMENT);
 
             JTextField pesoMinF = UIFactory.textField("50");
             JTextField pesoMaxF = UIFactory.textField("100");
             JTextField estMinF = UIFactory.textField("1.60");
             JTextField estMaxF = UIFactory.textField("2.10");
 
-            String[] equipoNoms;
             List<Equipo> equipos = List.of();
             try { equipos = gestion.listarEquipos(); } catch (Exception ignored) {}
-            equipoNoms = new String[equipos.size() + 1];
-            equipoNoms[0] = "Todos los equipos";
-            int idx = 1;
-            for (Equipo eq : equipos) equipoNoms[idx++] = eq.getNombre();
-            JComboBox<String> equipoBox = UIFactory.comboBox(
-                  equipoNoms.length == 1 ? new String[]{"Todos los equipos"} : equipoNoms);
-            final List<Equipo> equiposFinal = equipos;
 
-            p.add(UIFactory.formLabel("Peso mínimo (kg)")); p.add(pesoMinF);
-            p.add(UIFactory.formLabel("Peso máximo (kg)")); p.add(pesoMaxF);
+            String[] noms = new String[equipos.size() + 1];
+            noms[0] = "Todos los equipos";
+            for (int i = 0; i < equipos.size(); i++) noms[i + 1] = equipos.get(i).getNombre();
+            JComboBox<String> equipoBox = UIFactory.comboBox(noms);
+            final List<Equipo> eqFinal = equipos;
+
+            p.add(UIFactory.formLabel("Peso mín (kg)")); p.add(pesoMinF);
+            p.add(UIFactory.formLabel("Peso máx (kg)")); p.add(pesoMaxF);
             p.add(UIFactory.formLabel("Estatura mín (m)")); p.add(estMinF);
             p.add(UIFactory.formLabel("Estatura máx (m)")); p.add(estMaxF);
             p.add(UIFactory.formLabel("Equipo")); p.add(equipoBox);
 
-            JButton btn = magentaButton("Generar PDF — b2", UIColors.BLUE);
+            JButton btn = accentButton("Generar PDF", accent);
             btn.setAlignmentX(LEFT_ALIGNMENT);
-            btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+            btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
             btn.addActionListener(e -> {
+                  setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                   try {
                         BigDecimal pMin = new BigDecimal(pesoMinF.getText().trim());
                         BigDecimal pMax = new BigDecimal(pesoMaxF.getText().trim());
                         BigDecimal eMin = new BigDecimal(estMinF.getText().trim());
                         BigDecimal eMax = new BigDecimal(estMaxF.getText().trim());
-                        int selIdx = equipoBox.getSelectedIndex();
-                        int idEq = (selIdx <= 0 || selIdx > equiposFinal.size())
-                              ? 0 : equiposFinal.get(selIdx - 1).getIdEquipo();
-                        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+                        int sel = equipoBox.getSelectedIndex();
+                        int idEq = (sel <= 0 || sel > eqFinal.size())
+                              ? 0 : eqFinal.get(sel - 1).getIdEquipo();
                         String ruta = mundial.generarReporteJugadoresFiltrados(pMin, pMax, eMin, eMax, idEq);
-                        setCursor(Cursor.getDefaultCursor());
                         JOptionPane.showMessageDialog(this, "PDF generado:\n" + ruta);
                   } catch (Exception ex) {
-                        setCursor(Cursor.getDefaultCursor());
-                        JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                  }
+                  JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                  } finally { setCursor(Cursor.getDefaultCursor()); }
             });
 
             JPanel wrap = new JPanel();
@@ -254,43 +249,41 @@ public class ReportsPanel extends JPanel {
             return wrap;
       }
 
-
-      private JPanel buildParamsB3() {
+      private JPanel buildB3Params(Color accent) {
             JPanel p = new JPanel(new GridLayout(0, 2, 8, 8));
             p.setOpaque(false);
-            p.setAlignmentX(LEFT_ALIGNMENT);
 
             List<co.edu.uniquindio.model.Confederacion> confs = List.of();
             try { confs = gestion.listarConfederaciones(); } catch (Exception ignored) {}
 
-            String[] confNoms = confs.isEmpty()
+            String[] noms = confs.isEmpty()
                   ? new String[]{"UEFA","CONMEBOL","CONCACAF","CAF","AFC","OFC"}
-                  : confs.stream().map(co.edu.uniquindio.model.Confederacion::getNombre).toArray(String[]::new);
-            JComboBox<String> confBox = UIFactory.comboBox(confNoms);
+                  : confs.stream()
+                        .map(co.edu.uniquindio.model.Confederacion::getNombre)
+                        .toArray(String[]::new);
+            JComboBox<String> confBox = UIFactory.comboBox(noms);
             final List<co.edu.uniquindio.model.Confederacion> confsFinal = confs;
 
             p.add(UIFactory.formLabel("Confederación")); p.add(confBox);
 
-            JButton btn = magentaButton("Generar PDF — b3", UIColors.TURQUOISE);
+            JButton btn = accentButton("Generar PDF", accent);
             btn.setAlignmentX(LEFT_ALIGNMENT);
-            btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+            btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
             btn.addActionListener(e -> {
+                  setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                   try {
-                        int selIdx = confBox.getSelectedIndex();
-                        int idConf = 1;
-                        String nombre = confBox.getSelectedItem().toString();
-                        if (!confsFinal.isEmpty() && selIdx >= 0 && selIdx < confsFinal.size()) {
-                              idConf  = confsFinal.get(selIdx).getIdConfederacion();
-                              nombre  = confsFinal.get(selIdx).getNombre();
-                        }
-                        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-                        String ruta = mundial.generarReporteValorPorConfederacion(idConf, nombre);
-                        setCursor(Cursor.getDefaultCursor());
-                        JOptionPane.showMessageDialog(this, "PDF generado:\n" + ruta);
-                  } catch (Exception ex) {
-                        setCursor(Cursor.getDefaultCursor());
-                        JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                  int sel = confBox.getSelectedIndex();
+                  int idConf = 1;
+                  String nombre = confBox.getSelectedItem().toString();
+                  if (!confsFinal.isEmpty() && sel >= 0 && sel < confsFinal.size()) {
+                        idConf = confsFinal.get(sel).getIdConfederacion();
+                        nombre = confsFinal.get(sel).getNombre();
                   }
+                  String ruta = mundial.generarReporteValorPorConfederacion(idConf, nombre);
+                  JOptionPane.showMessageDialog(this, "PDF generado:\n" + ruta);
+                  } catch (Exception ex) {
+                  JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                  } finally { setCursor(Cursor.getDefaultCursor()); }
             });
 
             JPanel wrap = new JPanel();
@@ -302,13 +295,13 @@ public class ReportsPanel extends JPanel {
             return wrap;
       }
 
-
-      private JPanel buildParamsB4(Color accent) {
+      private JPanel buildB4Params(Color accent) {
             JPanel wrap = new JPanel();
             wrap.setOpaque(false);
             wrap.setLayout(new BoxLayout(wrap, BoxLayout.Y_AXIS));
 
-            JLabel info = new JLabel("<html>No requiere parámetros adicionales.<br>" +
+            JLabel info = new JLabel(
+                  "<html>No requiere parámetros adicionales.<br>" +
                   "Genera el listado completo de equipos por cada país sede.</html>");
             info.setFont(UIFonts.BODY_SM);
             info.setForeground(UIColors.TEXT_MUTED);
@@ -316,52 +309,46 @@ public class ReportsPanel extends JPanel {
             wrap.add(info);
             wrap.add(Box.createVerticalStrut(10));
 
-            JButton btn = magentaButton("Generar PDF — b4", accent);
+            JButton btn = accentButton("Generar PDF", accent);
             btn.setAlignmentX(LEFT_ALIGNMENT);
-            btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+            btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
             btn.addActionListener(e -> {
+                  setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                   try {
-                        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                         String ruta = mundial.generarReporteEquiposPorAnfitrion();
-                        setCursor(Cursor.getDefaultCursor());
                         JOptionPane.showMessageDialog(this, "PDF generado:\n" + ruta);
                   } catch (Exception ex) {
-                        setCursor(Cursor.getDefaultCursor());
                         JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                  }
+                  } finally { setCursor(Cursor.getDefaultCursor()); }
             });
 
             wrap.add(btn);
             return wrap;
       }
 
-      private JButton magentaButton(String text, Color color) {
+      private JButton accentButton(String text, Color accent) {
             JButton btn = new JButton(text) {
                   @Override protected void paintComponent(Graphics g) {
-                  Graphics2D g2 = (Graphics2D) g.create();
-                  g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                  g2.setColor(getBackground());
-                  g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 10, 10));
-                  g2.dispose();
-                  super.paintComponent(g);
+                        Graphics2D g2 = (Graphics2D) g.create();
+                        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                        g2.setColor(getBackground());
+                        g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 8, 8));
+                        g2.dispose();
+                        super.paintComponent(g);
                   }
             };
             btn.setFont(UIFonts.BUTTON_MD);
             btn.setForeground(Color.WHITE);
-            btn.setBackground(color);
+            btn.setBackground(accent);
             btn.setContentAreaFilled(false);
             btn.setBorderPainted(false);
             btn.setFocusPainted(false);
-            btn.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+            btn.setBorder(BorderFactory.createEmptyBorder(8, 18, 8, 18));
             btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             btn.addMouseListener(new java.awt.event.MouseAdapter() {
-                  public void mouseEntered(java.awt.event.MouseEvent e) {
-                  btn.setBackground(color.darker());
-                  }
-                  public void mouseExited(java.awt.event.MouseEvent e) {
-                  btn.setBackground(color);
-                  }
+                  public void mouseEntered(java.awt.event.MouseEvent e) { btn.setBackground(accent.darker()); }
+                  public void mouseExited (java.awt.event.MouseEvent e) { btn.setBackground(accent); }
             });
             return btn;
       }
-      }
+}
