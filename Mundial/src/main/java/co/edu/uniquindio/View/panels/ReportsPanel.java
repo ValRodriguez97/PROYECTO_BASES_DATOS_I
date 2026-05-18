@@ -4,9 +4,14 @@ import co.edu.uniquindio.model.*;
 import co.edu.uniquindio.services.GestionDatosService;
 import co.edu.uniquindio.services.MundialService;
 import co.edu.uniquindio.View.utils.*;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -62,7 +67,10 @@ import java.util.List;
 
             JPanel grid = new JPanel(new GridLayout(2, 2, 18, 18));
             grid.setOpaque(false);
-            grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, 620));
+            // FIX: la altura anterior (620) cortaba el card B2 que tiene 5 filas de
+            // parámetros + botón. Se sube a 820 para que el botón "Generar PDF" sea
+            // visible en todos los cards.
+            grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, 820));
             for (int i = 0; i < 4; i++) grid.add(buildReportCard(i));
             content.add(grid);
 
@@ -181,7 +189,7 @@ import java.util.List;
                   LocalDateTime desde = LocalDate.parse(desdeF.getText().trim(), FMT).atStartOfDay();
                   LocalDateTime hasta = LocalDate.parse(hastaF.getText().trim(), FMT).atTime(LocalTime.MAX);
                   String ruta = mundial.generarReporteBitacora(desde, hasta);
-                  JOptionPane.showMessageDialog(this, "PDF generado:\n" + ruta);
+                  showPdfPreview(ruta);
                   } catch (Exception ex) {
                   JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                   } finally { setCursor(Cursor.getDefaultCursor()); }
@@ -234,7 +242,7 @@ import java.util.List;
                         int idEq = (sel <= 0 || sel > eqFinal.size())
                               ? 0 : eqFinal.get(sel - 1).getIdEquipo();
                         String ruta = mundial.generarReporteJugadoresFiltrados(pMin, pMax, eMin, eMax, idEq);
-                        JOptionPane.showMessageDialog(this, "PDF generado:\n" + ruta);
+                        showPdfPreview(ruta);
                   } catch (Exception ex) {
                   JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                   } finally { setCursor(Cursor.getDefaultCursor()); }
@@ -280,7 +288,7 @@ import java.util.List;
                         nombre = confsFinal.get(sel).getNombre();
                   }
                   String ruta = mundial.generarReporteValorPorConfederacion(idConf, nombre);
-                  JOptionPane.showMessageDialog(this, "PDF generado:\n" + ruta);
+                  showPdfPreview(ruta);
                   } catch (Exception ex) {
                   JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                   } finally { setCursor(Cursor.getDefaultCursor()); }
@@ -316,7 +324,7 @@ import java.util.List;
                   setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                   try {
                         String ruta = mundial.generarReporteEquiposPorAnfitrion();
-                        JOptionPane.showMessageDialog(this, "PDF generado:\n" + ruta);
+                        showPdfPreview(ruta);
                   } catch (Exception ex) {
                         JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                   } finally { setCursor(Cursor.getDefaultCursor()); }
@@ -324,6 +332,108 @@ import java.util.List;
 
             wrap.add(btn);
             return wrap;
+      }
+
+      /**
+       * Abre un diálogo modal con la vista previa del PDF generado.
+       * Renderiza cada página con PDFBox y permite navegar entre páginas.
+       * Si por alguna razón no se puede renderizar (PDF corrupto, etc.) cae de
+       * vuelta a un mensaje con la ruta para que el usuario lo abra a mano.
+       */
+      private void showPdfPreview(String pdfPath) {
+            File pdfFile = new File(pdfPath);
+            if (!pdfFile.exists()) {
+                  JOptionPane.showMessageDialog(this,
+                        "El PDF no existe en la ruta:\n" + pdfPath,
+                        "Error", JOptionPane.ERROR_MESSAGE);
+                  return;
+            }
+            PDDocument doc;
+            try {
+                  doc = Loader.loadPDF(pdfFile);
+            } catch (Exception ex) {
+                  ex.printStackTrace();
+                  JOptionPane.showMessageDialog(this,
+                        "PDF generado en:\n" + pdfPath + "\n\nNo se pudo abrir la vista previa: " + ex.getMessage(),
+                        "Aviso", JOptionPane.WARNING_MESSAGE);
+                  return;
+            }
+            final PDFRenderer renderer = new PDFRenderer(doc);
+            final int totalPages = doc.getNumberOfPages();
+
+            JDialog dlg = new JDialog(SwingUtilities.getWindowAncestor(this),
+                  "Vista previa: " + pdfFile.getName(),
+                  Dialog.ModalityType.APPLICATION_MODAL);
+            dlg.setSize(820, 900);
+            dlg.setLocationRelativeTo(this);
+            dlg.setLayout(new BorderLayout());
+            dlg.addWindowListener(new java.awt.event.WindowAdapter() {
+                  @Override public void windowClosed(java.awt.event.WindowEvent e) {
+                        try { doc.close(); } catch (Exception ignored) {}
+                  }
+            });
+            dlg.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+
+            JLabel pathLabel = new JLabel("Archivo: " + pdfFile.getAbsolutePath());
+            pathLabel.setFont(UIFonts.BODY_SM);
+            pathLabel.setForeground(UIColors.TEXT_SECONDARY);
+            pathLabel.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
+            dlg.add(pathLabel, BorderLayout.NORTH);
+
+            JLabel imageLabel = new JLabel();
+            imageLabel.setHorizontalAlignment(JLabel.CENTER);
+            imageLabel.setVerticalAlignment(JLabel.TOP);
+            imageLabel.setBackground(new Color(0xEEEEEE));
+            imageLabel.setOpaque(true);
+            JScrollPane scroll = new JScrollPane(imageLabel);
+            scroll.getVerticalScrollBar().setUnitIncrement(16);
+            dlg.add(scroll, BorderLayout.CENTER);
+
+            JPanel nav = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 10));
+            nav.setBackground(new Color(0xF8F9FC));
+            nav.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, UIColors.BORDER));
+            JButton prev = new JButton("◀ Anterior");
+            JButton next = new JButton("Siguiente ▶");
+            JLabel pageInfo = new JLabel();
+            pageInfo.setFont(UIFonts.LABEL_BOLD);
+            JButton openExternal = new JButton("Abrir en visor del sistema");
+
+            final int[] current = {0};
+            Runnable renderPage = () -> {
+                  try {
+                        BufferedImage img = renderer.renderImageWithDPI(current[0], 110);
+                        imageLabel.setIcon(new ImageIcon(img));
+                        imageLabel.setText(null);
+                        pageInfo.setText("Página " + (current[0] + 1) + " de " + totalPages);
+                        prev.setEnabled(current[0] > 0);
+                        next.setEnabled(current[0] < totalPages - 1);
+                  } catch (Exception ex) {
+                        ex.printStackTrace();
+                        imageLabel.setIcon(null);
+                        imageLabel.setText("No se pudo renderizar la página: " + ex.getMessage());
+                  }
+            };
+
+            prev.addActionListener(e -> { if (current[0] > 0)              { current[0]--; renderPage.run(); }});
+            next.addActionListener(e -> { if (current[0] < totalPages - 1) { current[0]++; renderPage.run(); }});
+            openExternal.addActionListener(e -> {
+                  try { Desktop.getDesktop().open(pdfFile); }
+                  catch (Exception ex) {
+                        JOptionPane.showMessageDialog(dlg,
+                              "No se pudo abrir con el visor del sistema:\n" + ex.getMessage(),
+                              "Aviso", JOptionPane.WARNING_MESSAGE);
+                  }
+            });
+
+            nav.add(prev);
+            nav.add(pageInfo);
+            nav.add(next);
+            nav.add(Box.createHorizontalStrut(20));
+            nav.add(openExternal);
+            dlg.add(nav, BorderLayout.SOUTH);
+
+            renderPage.run();
+            dlg.setVisible(true);
       }
 
       private JButton accentButton(String text, Color accent) {
