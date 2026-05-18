@@ -130,7 +130,12 @@ public class LoginPanel extends JPanel {
             errorLabel = new JLabel(" ");
             errorLabel.setFont(UIFonts.BODY_SM);
             errorLabel.setForeground(UIColors.RED);
-            errorLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            errorLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            errorLabel.setHorizontalAlignment(SwingConstants.CENTER);
+            Dimension errorSize = new Dimension(FIELD_SIZE.width, 20);
+            errorLabel.setPreferredSize(errorSize);
+            errorLabel.setMinimumSize(errorSize);
+            errorLabel.setMaximumSize(errorSize);
 
             JButton loginBtn = UIFactory.primaryButton("Iniciar Sesión");
             loginBtn.setPreferredSize(new Dimension(320, 46));
