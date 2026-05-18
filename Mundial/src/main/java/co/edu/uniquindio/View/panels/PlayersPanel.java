@@ -322,8 +322,9 @@ public class PlayersPanel extends JPanel {
         // Cargar combos desde el backend
         List<Equipo>   equipos    = List.of();
         List<Posicion> posiciones = List.of();
-        try { equipos    = gestion.listarEquipos();    } catch (Exception ignored) {}
-        try { posiciones = gestion.listarPosiciones(); } catch (Exception ignored) {}
+        try { equipos    = gestion.listarEquipos();    } catch (Exception ex) { ex.printStackTrace(); }
+        try { posiciones = gestion.listarPosiciones(); } catch (Exception ex) { ex.printStackTrace(); }
+        System.out.println("[DEBUG] Combos cargados: equipos=" + equipos.size() + ", posiciones=" + posiciones.size());
 
         String[] equipoNoms = equipos.stream().map(Equipo::getNombre).toArray(String[]::new);
         String[] posNoms    = posiciones.stream().map(Posicion::getNombre).toArray(String[]::new);
@@ -407,7 +408,24 @@ public class PlayersPanel extends JPanel {
                 Posicion posSel = (!posicionesFinal.isEmpty() && idxPos >= 0) ? posicionesFinal.get(idxPos)  : null;
 
                 if (esNuevo) {
-                    // FIX: construir objeto Jugador y llamar gestion.crearJugador(Jugador)
+                    if (eqSel == null) {
+                        JOptionPane.showMessageDialog(dlg,
+                                "Debes seleccionar un equipo. Si no hay equipos en el combo, primero registra equipos.",
+                                "Falta equipo", JOptionPane.WARNING_MESSAGE);
+                        return;
+                    }
+                    if (posSel == null) {
+                        JOptionPane.showMessageDialog(dlg,
+                                "Debes seleccionar una posición. Si el combo está vacío, no se cargaron las posiciones desde BD.",
+                                "Falta posición", JOptionPane.WARNING_MESSAGE);
+                        return;
+                    }
+                    if (fechaNac == null) {
+                        JOptionPane.showMessageDialog(dlg,
+                                "La fecha de nacimiento es obligatoria (yyyy-MM-dd).",
+                                "Falta fecha", JOptionPane.WARNING_MESSAGE);
+                        return;
+                    }
                     Jugador nuevo = new Jugador();
                     nuevo.setNombre(nombre);
                     nuevo.setApellido(apellido);
@@ -417,7 +435,10 @@ public class PlayersPanel extends JPanel {
                     nuevo.setValorMercado(valor);
                     nuevo.setPosicion(posSel);
                     nuevo.setEquipo(eqSel);
+                    System.out.println("[DEBUG] Insertando jugador: " + nombre + " " + apellido
+                            + " | equipo=" + eqSel.getNombre() + " | posicion=" + posSel.getNombre());
                     gestion.crearJugador(nuevo);
+                    System.out.println("[DEBUG] Jugador insertado con id=" + nuevo.getIdJugador());
                 } else {
                     // FIX: actualizar los campos con BigDecimal y llamar gestion.actualizarJugador(Jugador)
                     jugador.setNombre(nombre);
@@ -443,6 +464,7 @@ public class PlayersPanel extends JPanel {
                         "Estatura, peso y valor deben ser números válidos (usa punto decimal).", "Error",
                         JOptionPane.ERROR_MESSAGE);
             } catch (Exception ex) {
+                ex.printStackTrace();
                 JOptionPane.showMessageDialog(dlg,
                         "Error al guardar: " + ex.getMessage(), "Error",
                         JOptionPane.ERROR_MESSAGE);

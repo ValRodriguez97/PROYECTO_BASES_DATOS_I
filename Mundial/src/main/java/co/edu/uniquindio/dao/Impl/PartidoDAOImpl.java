@@ -32,11 +32,20 @@ public class PartidoDAOImpl implements IPartidoDAO {
         return p;
     }
 
-    private static final String SELECT_BASE =
-            "SELECT pa.*, g.letra AS letraGrupo, est.nombre AS nombreEstadio " +
+    // SELECT que incluye los DetallePartido LOCAL y VISITANTE con sus Equipos,
+    // necesario para que la UI muestre los nombres de los equipos.
+    private static final String SELECT_CON_DETALLES =
+            "SELECT pa.idPartido, pa.horaFecha, pa.idGrupo, pa.idEstadio, " +
+                    "       g.letra AS letraGrupo, est.nombre AS nombreEstadio, " +
+                    "       e1.idEquipo AS idEquipoLocal,     e1.nombre AS nombreLocal,     dp1.golesAnotados AS golesLocal, " +
+                    "       e2.idEquipo AS idEquipoVisitante, e2.nombre AS nombreVisitante, dp2.golesAnotados AS golesVisitante " +
                     "FROM Partido pa " +
-                    "JOIN Grupo g ON pa.idGrupo = g.idGrupo " +
-                    "JOIN Estadio est ON pa.idEstadio = est.idEstadio ";
+                    "JOIN Grupo g       ON pa.idGrupo   = g.idGrupo " +
+                    "JOIN Estadio est   ON pa.idEstadio = est.idEstadio " +
+                    "LEFT JOIN DetallePartido dp1 ON dp1.idPartido = pa.idPartido AND dp1.condicion = 'LOCAL' " +
+                    "LEFT JOIN DetallePartido dp2 ON dp2.idPartido = pa.idPartido AND dp2.condicion = 'VISITANTE' " +
+                    "LEFT JOIN Equipo e1 ON e1.idEquipo = dp1.idEquipo " +
+                    "LEFT JOIN Equipo e2 ON e2.idEquipo = dp2.idEquipo ";
 
     @Override
     public void insertar(Partido p) throws Exception {
@@ -122,10 +131,13 @@ public class PartidoDAOImpl implements IPartidoDAO {
 
     @Override
     public Optional<Partido> buscarPorId(int id) throws Exception {
-        try (PreparedStatement ps = getConn().prepareStatement(SELECT_BASE + "WHERE pa.idPartido=?")) {
+        try (PreparedStatement ps = getConn().prepareStatement(SELECT_CON_DETALLES + "WHERE pa.idPartido=?")) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+                if (!rs.next()) return Optional.empty();
+                Partido p = mapear(rs);
+                agregarDetallesDesdeRs(p, rs);
+                return Optional.of(p);
             }
         }
     }
@@ -134,8 +146,12 @@ public class PartidoDAOImpl implements IPartidoDAO {
     public List<Partido> listarTodos() throws Exception {
         List<Partido> lista = new ArrayList<>();
         try (Statement st = getConn().createStatement();
-             ResultSet rs = st.executeQuery(SELECT_BASE + "ORDER BY pa.horaFecha")) {
-            while (rs.next()) lista.add(mapear(rs));
+             ResultSet rs = st.executeQuery(SELECT_CON_DETALLES + "ORDER BY pa.horaFecha")) {
+            while (rs.next()) {
+                Partido p = mapear(rs);
+                agregarDetallesDesdeRs(p, rs);
+                lista.add(p);
+            }
         }
         return lista;
     }
@@ -204,10 +220,15 @@ public class PartidoDAOImpl implements IPartidoDAO {
     @Override
     public List<Partido> listarPorGrupo(int idGrupo) throws Exception {
         List<Partido> lista = new ArrayList<>();
-        try (PreparedStatement ps = getConn().prepareStatement(SELECT_BASE + "WHERE pa.idGrupo=?")) {
+        try (PreparedStatement ps = getConn().prepareStatement(
+                SELECT_CON_DETALLES + "WHERE pa.idGrupo=? ORDER BY pa.horaFecha")) {
             ps.setInt(1, idGrupo);
             try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) lista.add(mapear(rs));
+                while (rs.next()) {
+                    Partido p = mapear(rs);
+                    agregarDetallesDesdeRs(p, rs);
+                    lista.add(p);
+                }
             }
         }
         return lista;
