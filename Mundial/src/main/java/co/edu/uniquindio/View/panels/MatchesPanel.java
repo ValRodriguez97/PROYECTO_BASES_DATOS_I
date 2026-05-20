@@ -469,8 +469,8 @@ public class MatchesPanel extends JPanel {
             // ORDENAR POR RANKING FIFA DESC
             equipos.sort((a, b) ->
                     Integer.compare(
-                            b.getRankingFifa(),
-                            a.getRankingFifa()
+                            a.getRankingFifa(),
+                            b.getRankingFifa()
                     )
             );
 

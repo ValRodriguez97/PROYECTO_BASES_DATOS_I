@@ -14,12 +14,13 @@ public class SidebarPanel extends JPanel {
         void onNavigate(String panelName);
     }
 
+
     private final List<NavItem> items = new ArrayList<>();
     private String activePanel = "dashboard";
     private NavListener listener;
     private String userName = "Administrador";
     private String userEmail = "admin@fifa2026.com";
-    private String userRole = "ADMINISTRADOR";
+    private String userRole = "";
     private Runnable onLogout;
 
     // ID → [icono, etiqueta, tipoMinimo]
@@ -31,12 +32,17 @@ public class SidebarPanel extends JPanel {
         {"matches", "📅", "Partidos", "CRUD"},
         {"stadiums", "🏟", "Estadios", "CRUD"},
         {"queries", "🔍", "Consultas", "ALL"},
-        {"reports", "📊", "Reportes", "ALL"},
+        {"reports", "📊", "Reportes", "CRUD"},
         {"users", "⚙", "Usuarios", "ADMIN"},
         {"audit", "📋", "Bitácora", "ADMIN"},
     };
 
-    public SidebarPanel() {
+    public SidebarPanel(){
+        this("");
+    }
+
+    public SidebarPanel(String rolInicial) {
+        this.userRole = rolInicial;
         setPreferredSize(new Dimension(235, 0));
         setBackground(UIColors.SIDEBAR_BG);
         setLayout(new BorderLayout());

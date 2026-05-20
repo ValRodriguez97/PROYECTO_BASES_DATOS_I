@@ -24,6 +24,8 @@ public class MainFrame extends JFrame {
     private QueriesPanel    queriesPanel;
     private PlayersPanel    playersPanel;
     private MatchesPanel    matchesPanel;
+    private TeamsPanel    teamsPanel;
+    private StadiumsPanel stadiumsPanel;
 
     private static final String CARD_LOGIN = "login";
     private static final String CARD_APP   = "app";
@@ -65,10 +67,10 @@ public class MainFrame extends JFrame {
     }
 
     private void onLoginSuccess() {
+        var u = seguridad.getUsuarioActual();
         buildAppShell();
         ((CardLayout) root.getLayout()).show(root, CARD_APP);
 
-        var u = seguridad.getUsuarioActual();
         sidebar.setUserInfo(
                 u.getNombreUsuario(),
                 u.getNombreUsuario() + "@fifa2026.com",
@@ -100,7 +102,12 @@ public class MainFrame extends JFrame {
 
         appShell = new JPanel(new BorderLayout());
 
-        sidebar = new SidebarPanel();
+        var u = seguridad.getUsuarioActual();
+        boolean esCRUD  = u != null && u.puedeEjecutarCRUD();
+        boolean esAdmin = u != null && u.puedeCrearUsuarios();
+
+        // Crear sidebar con el rol correcto ANTES de build()
+        sidebar = new SidebarPanel(u != null ? u.getTipoUsuario().name() : "");
         sidebar.setNavListener(this::navigate);
         sidebar.setOnLogout(this::onLogout);
         appShell.add(sidebar, BorderLayout.WEST);
@@ -109,26 +116,31 @@ public class MainFrame extends JFrame {
         contentArea   = new JPanel(contentLayout);
         contentArea.setBackground(UIColors.BG_PAGE);
 
-        var u = seguridad.getUsuarioActual();
-        boolean esCRUD  = u != null && u.puedeEjecutarCRUD();
-        boolean esAdmin = u != null && u.puedeCrearUsuarios();
-
         dashboardPanel = new DashboardPanel(gestion);
         queriesPanel   = new QueriesPanel(gestion, mundial);
 
         contentArea.add(dashboardPanel, P_DASHBOARD);
         contentArea.add(queriesPanel,   P_QUERIES);
-        contentArea.add(new ReportsPanel(gestion, mundial), P_REPORTS);
-
+        // contentArea.add(new ReportsPanel(gestion, mundial), P_REPORTS);
         if (esCRUD) {
-            playersPanel = new PlayersPanel(gestion);
-            matchesPanel = new MatchesPanel(gestion);
-
-            contentArea.add(new TeamsPanel(gestion),   P_TEAMS);
-            contentArea.add(playersPanel,              P_PLAYERS);
-            contentArea.add(matchesPanel,              P_MATCHES);
-            contentArea.add(new StadiumsPanel(gestion), P_STADIUMS);
+            contentArea.add(new ReportsPanel(gestion, mundial), P_REPORTS);
         } else {
+            contentArea.add(buildAccessDeniedPanel("Reportes",
+                    "Tu tipo de usuario no tiene permisos para acceder a los reportes."), P_REPORTS);
+        }
+        if (esCRUD) {
+            teamsPanel    = new TeamsPanel(gestion);
+            playersPanel  = new PlayersPanel(gestion);
+            matchesPanel  = new MatchesPanel(gestion);
+            stadiumsPanel = new StadiumsPanel(gestion);
+
+            contentArea.add(teamsPanel,    P_TEAMS);
+            contentArea.add(playersPanel,  P_PLAYERS);
+            contentArea.add(matchesPanel,  P_MATCHES);
+            contentArea.add(stadiumsPanel, P_STADIUMS);
+        } else {
+            teamsPanel    = null;
+            stadiumsPanel = null;
             contentArea.add(buildAccessDeniedPanel("Equipos",
                     "Tu tipo de usuario no tiene permisos para acceder a esta sección."), P_TEAMS);
             contentArea.add(buildAccessDeniedPanel("Jugadores",
@@ -168,6 +180,8 @@ public class MainFrame extends JFrame {
             case P_QUERIES   -> { if (queriesPanel   != null) queriesPanel.refresh();   }
             case P_PLAYERS   -> { if (playersPanel   != null) playersPanel.refresh();   }
             case P_MATCHES   -> { if (matchesPanel   != null) matchesPanel.refresh();   }
+            case P_TEAMS     -> { if (teamsPanel     != null) teamsPanel.refresh();     }
+            case P_STADIUMS  -> { if (stadiumsPanel  != null) stadiumsPanel.refresh();  }
         }
     }
 

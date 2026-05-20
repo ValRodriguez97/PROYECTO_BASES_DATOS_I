@@ -16,6 +16,10 @@ public class StadiumsPanel extends JPanel {
     private DefaultTableModel model;
     private JTextField searchField;
 
+    public void refresh() {
+        loadData();
+    }
+
     private static final String[] COLUMNS = {
         "#", "Estadio", "Ciudad", "País", "Capacidad", "Acciones"
     };

@@ -8,6 +8,7 @@ import co.edu.uniquindio.View.utils.*;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.List;
 
 public class UsersPanel extends JPanel {
@@ -188,12 +189,11 @@ public class UsersPanel extends JPanel {
             }
       }
 
-
       private void showUserForm(Integer editRow) {
             boolean esNuevo = (editRow == null);
             JDialog dlg = new JDialog(SwingUtilities.getWindowAncestor(this),
-                  esNuevo ? "Nuevo Usuario" : "Editar Usuario",
-                  Dialog.ModalityType.APPLICATION_MODAL);
+                        esNuevo ? "Nuevo Usuario" : "Editar Usuario",
+                        Dialog.ModalityType.APPLICATION_MODAL);
             dlg.setSize(420, esNuevo ? 300 : 260);
             dlg.setLocationRelativeTo(this);
             dlg.setLayout(new BorderLayout());
@@ -202,47 +202,84 @@ public class UsersPanel extends JPanel {
             form.setBackground(Color.WHITE);
             form.setBorder(BorderFactory.createEmptyBorder(24, 24, 12, 24));
 
-            JTextField userF = UIFactory.textField("Ej: juan2026");
+            JTextField userF    = UIFactory.textField("Ej: juan2026");
             JPasswordField passF = UIFactory.passwordField("Mínimo 4 caracteres");
             JComboBox<String> tipoBox = UIFactory.comboBox("TRADICIONAL", "ESPORADICO");
 
+            // Obtener usuario real si es edición
+            List<Usuario> todosLosFiltrados = new ArrayList<>();
             if (!esNuevo) {
-                  userF.setText(model.getValueAt(editRow, 1).toString());
-                  tipoBox.setSelectedItem(model.getValueAt(editRow, 2).toString());
+                  try {
+                        String filtro = searchField != null ? searchField.getText().trim().toLowerCase() : "";
+                        todosLosFiltrados = gestion.listarUsuarios().stream()
+                              .filter(u -> filtro.isEmpty() || u.getNombreUsuario().toLowerCase().contains(filtro))
+                              .collect(java.util.stream.Collectors.toList());
+                  } catch (Exception ex) {
+                        ex.printStackTrace();
+                  }
+                  if (editRow < todosLosFiltrados.size()) {
+                        Usuario u = todosLosFiltrados.get(editRow);
+                        userF.setText(u.getNombreUsuario());
+                        tipoBox.setSelectedItem(u.getTipoUsuario().name());
+                  }
             }
+
+            final List<Usuario> usuariosFinal = todosLosFiltrados;
 
             form.add(UIFactory.formLabel("Nombre de Usuario")); form.add(userF);
             if (esNuevo) {
                   form.add(UIFactory.formLabel("Contraseña")); form.add(passF);
             }
-            form.add(UIFactory.formLabel("Tipo"));             form.add(tipoBox);
+            form.add(UIFactory.formLabel("Tipo")); form.add(tipoBox);
 
             JPanel footer = buildFooter();
             JButton cancel = UIFactory.outlineButton("Cancelar");
             cancel.addActionListener(e -> dlg.dispose());
+
             JButton save = UIFactory.primaryButton(esNuevo ? "Crear" : "Guardar");
             save.addActionListener(e -> {
                   String nombre = userF.getText().trim();
                   if (nombre.isEmpty()) {
-                  JOptionPane.showMessageDialog(dlg, "El nombre no puede estar vacío.", "Error", JOptionPane.ERROR_MESSAGE);
-                  return;
+                        JOptionPane.showMessageDialog(dlg,
+                              "El nombre no puede estar vacío.", "Error", JOptionPane.ERROR_MESSAGE);
+                        return;
                   }
                   try {
                         if (esNuevo) {
-                              String pass = new String(passF.getPassword());
-                              TipoUsuario tipo = TipoUsuario.valueOf(tipoBox.getSelectedItem().toString());
-                              seguridad.crearUsuario(nombre, pass, tipo);
-                              loadData();
+                        String pass = new String(passF.getPassword());
+                        TipoUsuario tipo = TipoUsuario.valueOf(tipoBox.getSelectedItem().toString());
+                        seguridad.crearUsuario(nombre, pass, tipo);
                         } else {
-                              model.setValueAt(nombre, editRow, 1);
-                              model.setValueAt(tipoBox.getSelectedItem(), editRow, 2);
+                        if (editRow >= usuariosFinal.size()) {
+                              JOptionPane.showMessageDialog(dlg,
+                                    "No se encontró el usuario a editar.", "Error", JOptionPane.ERROR_MESSAGE);
+                              return;
+                        }
+                        Usuario u = usuariosFinal.get(editRow);
+                        u.setNombreUsuario(nombre);
+                        // No se permite cambiar a ADMINISTRADOR desde aquí
+                        TipoUsuario nuevoTipo = TipoUsuario.valueOf(tipoBox.getSelectedItem().toString());
+                        if (nuevoTipo != TipoUsuario.ADMINISTRADOR) {
+                              // Crear instancia del subtipo correcto con la contraseña existente
+                              Usuario actualizado = nuevoTipo == TipoUsuario.TRADICIONAL
+                                    ? new co.edu.uniquindio.model.UsuarioTradicional(
+                                                u.getIdUsuario(), nombre, u.getContraseña())
+                                    : new co.edu.uniquindio.model.UsuarioEsporadico(
+                                                u.getIdUsuario(), nombre, u.getContraseña());
+                              gestion.actualizarUsuario(actualizado);
+                        } else {
+                              gestion.actualizarUsuario(u);
+                        }
                         }
                         dlg.dispose();
+                        loadData();
                   } catch (Exception ex) {
-                  JOptionPane.showMessageDialog(dlg, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(dlg, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                   }
             });
-            footer.add(cancel); footer.add(save);
+
+            footer.add(cancel);
+            footer.add(save);
             dlg.add(form,   BorderLayout.CENTER);
             dlg.add(footer, BorderLayout.SOUTH);
             dlg.setVisible(true);

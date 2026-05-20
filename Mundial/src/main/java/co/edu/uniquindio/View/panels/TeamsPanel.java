@@ -6,6 +6,7 @@ import co.edu.uniquindio.View.utils.*;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.List;
 
 public class TeamsPanel extends JPanel {
@@ -15,6 +16,11 @@ public class TeamsPanel extends JPanel {
     private DefaultTableModel model;
     private JTextField searchField;
     private JComboBox<String> confFilter;
+    private List<Equipo> equiposActuales = new ArrayList<>();
+
+    public void refresh() {
+        loadData();
+    }
 
     private static final String[] COLUMNS = {
         "#", "Equipo", "Conf.", "País", "Director Técnico", "Ranking", "Acciones"
@@ -158,19 +164,21 @@ public class TeamsPanel extends JPanel {
 
     private void loadData() {
         model.setRowCount(0);
+        equiposActuales = new ArrayList<>();
         try {
-            List<Equipo> equipos = gestion.listarEquipos();
+            List<Equipo> todos = gestion.listarEquipos();
             String search = searchField != null ? searchField.getText().trim().toLowerCase() : "";
             String conf   = confFilter  != null && confFilter.getSelectedIndex() > 0
                     ? (String) confFilter.getSelectedItem() : "";
             int idx = 1;
-            for (Equipo e : equipos) {
+            for (Equipo e : todos) {
                 if (!search.isEmpty() && !e.getNombre().toLowerCase().contains(search)) continue;
                 String sigla = e.getConfederacion() != null ? e.getConfederacion().getSigla() : "";
                 if (!conf.isEmpty() && !conf.equals(sigla)) continue;
                 String pais = e.getPais() != null ? e.getPais().getNombre() : "-";
                 String dt   = e.getDirectorTecnico() != null
                         ? e.getDirectorTecnico().getNombre() + " " + e.getDirectorTecnico().getApellido() : "-";
+                equiposActuales.add(e);
                 model.addRow(new Object[]{idx++, e.getNombre(), sigla, pais, dt, "#" + e.getRankingFifa(), ""});
             }
         } catch (Exception ex) {
@@ -182,16 +190,26 @@ public class TeamsPanel extends JPanel {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 4));
         p.setOpaque(false);
         JButton edit = smallBtn("✏", UIColors.BLUE, UIColors.INFO_BG);
-        edit.addActionListener(e -> { if (row < model.getRowCount()) showTeamForm(row); });
+        edit.addActionListener(e -> {
+            if (row < equiposActuales.size()) showTeamForm(equiposActuales.get(row));
+        });
         JButton del = smallBtn("🗑", UIColors.RED, UIColors.ERROR_BG);
         del.addActionListener(e -> {
-            if (row >= model.getRowCount()) return;
-            String name = model.getValueAt(row, 1).toString();
+            if (row >= equiposActuales.size()) return;
+            Equipo eq = equiposActuales.get(row);
             int c = JOptionPane.showConfirmDialog(this,
-                    "¿Eliminar el equipo \"" + name + "\"?", "Confirmar", JOptionPane.YES_NO_OPTION);
-            if (c == JOptionPane.YES_OPTION) model.removeRow(row);
+                    "¿Eliminar el equipo \"" + eq.getNombre() + "\"?",
+                    "Confirmar", JOptionPane.YES_NO_OPTION);
+            if (c != JOptionPane.YES_OPTION) return;
+            try {
+                gestion.eliminarEquipo(eq.getIdEquipo());
+                loadData();
+            } catch (Exception ex) {
+                showError("Error al eliminar: " + ex.getMessage());
+            }
         });
-        p.add(edit); p.add(del);
+        p.add(edit);
+        p.add(del);
         return p;
     }
 
@@ -206,11 +224,13 @@ public class TeamsPanel extends JPanel {
         return btn;
     }
 
-    private void showTeamForm(Integer editRow) {
+    private void showTeamForm(Equipo equipo) {
+        boolean esNuevo = (equipo == null);
+
         JDialog dlg = new JDialog(SwingUtilities.getWindowAncestor(this),
-                editRow == null ? "Nuevo Equipo" : "Editar Equipo",
+                esNuevo ? "Nuevo Equipo" : "Editar Equipo",
                 Dialog.ModalityType.APPLICATION_MODAL);
-        dlg.setSize(480, 380);
+        dlg.setSize(520, 420);
         dlg.setLocationRelativeTo(this);
         dlg.setLayout(new BorderLayout());
 
@@ -218,45 +238,112 @@ public class TeamsPanel extends JPanel {
         form.setBackground(Color.WHITE);
         form.setBorder(BorderFactory.createEmptyBorder(24, 24, 12, 24));
 
+        // Cargar datos reales desde BD
+        List<Pais>            paises       = new ArrayList<>();
+        List<Confederacion>   confs        = new ArrayList<>();
+        List<DirectorTecnico> directores   = new ArrayList<>();
+
+        try { paises     = gestion.listarPaises();            } catch (Exception ex) { ex.printStackTrace(); }
+        try { confs      = gestion.listarConfederaciones();   } catch (Exception ex) { ex.printStackTrace(); }
+        try { directores = gestion.listarDirectoresTecnicos();} catch (Exception ex) { ex.printStackTrace(); }
+
+        String[] nombresConf = confs.stream().map(Confederacion::getNombre).toArray(String[]::new);
+        String[] nombresPais = paises.stream().map(Pais::getNombre).toArray(String[]::new);
+        String[] nombresDT   = directores.stream()
+                .map(d -> d.getNombre() + " " + d.getApellido())
+                .toArray(String[]::new);
+
         JTextField nameF  = UIFactory.textField("Ej: Argentina");
-        JComboBox<String> confBox = UIFactory.comboBox("UEFA","CONMEBOL","CONCACAF","CAF","AFC","OFC");
-        JTextField paisF  = UIFactory.textField("Ej: Argentina");
-        JTextField dtF    = UIFactory.textField("Ej: Lionel Scaloni");
         JTextField rankF  = UIFactory.textField("Ej: 1");
 
-        if (editRow != null) {
-            nameF.setText(model.getValueAt(editRow, 1).toString());
-            confBox.setSelectedItem(model.getValueAt(editRow, 2).toString());
-            paisF.setText(model.getValueAt(editRow, 3).toString());
-            dtF.setText(model.getValueAt(editRow, 4).toString());
+        JComboBox<String> confBox = nombresConf.length > 0
+                ? UIFactory.comboBox(nombresConf) : UIFactory.comboBox("(sin confederaciones)");
+        JComboBox<String> paisBox = nombresPais.length > 0
+                ? UIFactory.comboBox(nombresPais) : UIFactory.comboBox("(sin paises)");
+        JComboBox<String> dtBox   = nombresDT.length > 0
+                ? UIFactory.comboBox(nombresDT)   : UIFactory.comboBox("(sin directores)");
+
+        // Pre-rellenar si es edición
+        if (!esNuevo) {
+            nameF.setText(equipo.getNombre());
+            rankF.setText(String.valueOf(equipo.getRankingFifa()));
+            if (equipo.getConfederacion() != null) confBox.setSelectedItem(equipo.getConfederacion().getNombre());
+            if (equipo.getPais() != null)          paisBox.setSelectedItem(equipo.getPais().getNombre());
+            if (equipo.getDirectorTecnico() != null) {
+                dtBox.setSelectedItem(equipo.getDirectorTecnico().getNombre()
+                        + " " + equipo.getDirectorTecnico().getApellido());
+            }
         }
 
         form.add(UIFactory.formLabel("Nombre del Equipo")); form.add(nameF);
         form.add(UIFactory.formLabel("Confederación"));     form.add(confBox);
-        form.add(UIFactory.formLabel("País"));              form.add(paisF);
-        form.add(UIFactory.formLabel("Director Técnico"));  form.add(dtF);
+        form.add(UIFactory.formLabel("País"));              form.add(paisBox);
+        form.add(UIFactory.formLabel("Director Técnico"));  form.add(dtBox);
         form.add(UIFactory.formLabel("Ranking FIFA"));      form.add(rankF);
+
+        final List<Pais>            paisesFinal    = paises;
+        final List<Confederacion>   confsFinal     = confs;
+        final List<DirectorTecnico> directoresFinal = directores;
 
         JPanel footer = buildDialogFooter();
         JButton cancel = UIFactory.outlineButton("Cancelar");
         cancel.addActionListener(e -> dlg.dispose());
-        JButton save = UIFactory.primaryButton(editRow == null ? "Guardar" : "Actualizar");
+
+        JButton save = UIFactory.primaryButton(esNuevo ? "Guardar" : "Actualizar");
         save.addActionListener(e -> {
             String nombre = nameF.getText().trim();
+            String rankTxt = rankF.getText().trim();
             if (nombre.isEmpty()) { showError("El nombre es obligatorio."); return; }
-            if (editRow != null) {
-                model.setValueAt(nombre, editRow, 1);
-                model.setValueAt(confBox.getSelectedItem(), editRow, 2);
-                model.setValueAt(paisF.getText(), editRow, 3);
-                model.setValueAt(dtF.getText(), editRow, 4);
-            } else {
-                model.addRow(new Object[]{model.getRowCount()+1, nombre,
-                        confBox.getSelectedItem(), paisF.getText(), dtF.getText(),
-                        "#" + rankF.getText(), ""});
+
+            int idxConf = confBox.getSelectedIndex();
+            int idxPais = paisBox.getSelectedIndex();
+            int idxDT   = dtBox.getSelectedIndex();
+
+            if (confsFinal.isEmpty() || idxConf < 0 || idxConf >= confsFinal.size()) {
+                showError("Selecciona una confederación válida."); return;
             }
-            dlg.dispose();
+            if (paisesFinal.isEmpty() || idxPais < 0 || idxPais >= paisesFinal.size()) {
+                showError("Selecciona un país válido."); return;
+            }
+            if (directoresFinal.isEmpty() || idxDT < 0 || idxDT >= directoresFinal.size()) {
+                showError("Selecciona un director técnico válido."); return;
+            }
+
+            try {
+                int ranking = rankTxt.isEmpty() ? 99 : Integer.parseInt(rankTxt);
+
+                Confederacion   confSel  = confsFinal.get(idxConf);
+                Pais            paisSel  = paisesFinal.get(idxPais);
+                DirectorTecnico dtSel    = directoresFinal.get(idxDT);
+
+                if (esNuevo) {
+                    Equipo nuevo = new Equipo();
+                    nuevo.setNombre(nombre);
+                    nuevo.setRankingFifa(ranking);
+                    nuevo.setConfederacion(confSel);
+                    nuevo.setPais(paisSel);
+                    nuevo.setDirectorTecnico(dtSel);
+                    gestion.crearEquipo(nuevo);
+                } else {
+                    equipo.setNombre(nombre);
+                    equipo.setRankingFifa(ranking);
+                    equipo.setConfederacion(confSel);
+                    equipo.setPais(paisSel);
+                    equipo.setDirectorTecnico(dtSel);
+                    gestion.actualizarEquipo(equipo);
+                }
+                dlg.dispose();
+                loadData();
+            } catch (NumberFormatException ex) {
+                showError("El ranking debe ser un número entero.");
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                showError("Error al guardar: " + ex.getMessage());
+            }
         });
-        footer.add(cancel); footer.add(save);
+
+        footer.add(cancel);
+        footer.add(save);
         dlg.add(form,   BorderLayout.CENTER);
         dlg.add(footer, BorderLayout.SOUTH);
         dlg.setVisible(true);
