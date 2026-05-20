@@ -72,11 +72,21 @@ public class GeneradorReportes {
     /** Quita tildes y caracteres no soportados por PDType1Font (Helvetica). */
     private static String normalizarTexto(String s) {
         if (s == null) return "";
-        return s.replace('á','a').replace('é','e').replace('í','i')
-                .replace('ó','o').replace('ú','u').replace('ü','u')
-                .replace('Á','A').replace('É','E').replace('Í','I')
-                .replace('Ó','O').replace('Ú','U').replace('ñ','n')
-                .replace('Ñ','N');
+        return s
+            // tildes y ñ
+            .replace('á','a').replace('é','e').replace('í','i')
+            .replace('ó','o').replace('ú','u').replace('ü','u')
+            .replace('Á','A').replace('É','E').replace('Í','I')
+            .replace('Ó','O').replace('Ú','U').replace('ñ','n')
+            .replace('Ñ','N')
+            // caracteres de tabla/box-drawing (U+2500 a U+257F)
+            .replaceAll("[\\u2500-\\u257F]", "-")
+            // otros símbolos frecuentes fuera de WinAnsiEncoding
+            .replaceAll("[\\u2018\\u2019\\u201C\\u201D]", "'")
+            .replaceAll("[\\u2013\\u2014]", "-")
+            .replaceAll("[\\u2026]", "...")
+            // cualquier carácter fuera del rango imprimible Latin-1 (0x20–0xFF)
+            .replaceAll("[^\\x20-\\xFF]", "?");
     }
 
     private static void escribirTitulo(PDPageContentStream cs,

@@ -42,8 +42,10 @@ public class BitacoraDAOImpl implements IBitacoraDAO {
     @Override
     public List<Bitacora> listarPorRango(LocalDateTime desde, LocalDateTime hasta) throws Exception {
         List<Bitacora> lista = new ArrayList<>();
-        String sql = "SELECT * FROM Bitacora WHERE fechaHoraIngreso BETWEEN ? AND ? " +
-                "OR (fechaHoraSalida BETWEEN ? AND ?) ORDER BY fechaHoraIngreso";
+        String sql = "SELECT * FROM Bitacora " +
+                "WHERE (fechaHoraIngreso >= ? AND fechaHoraIngreso <= ?) " +
+                "OR (fechaHoraSalida >= ? AND fechaHoraSalida <= ?) " +
+                "ORDER BY fechaHoraIngreso";
         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
             Timestamp tDesde = Timestamp.valueOf(desde);
             Timestamp tHasta = Timestamp.valueOf(hasta);

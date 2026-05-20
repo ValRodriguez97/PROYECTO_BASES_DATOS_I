@@ -6,6 +6,7 @@ import co.edu.uniquindio.View.utils.*;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.List;
 
 public class StadiumsPanel extends JPanel {
@@ -167,7 +168,7 @@ public class StadiumsPanel extends JPanel {
         JDialog dlg = new JDialog(SwingUtilities.getWindowAncestor(this),
                 editRow < 0 ? "Nuevo Estadio" : "Editar Estadio",
                 Dialog.ModalityType.APPLICATION_MODAL);
-        dlg.setSize(460, 300);
+        dlg.setSize(460, 320);
         dlg.setLocationRelativeTo(this);
         dlg.setLayout(new BorderLayout());
 
@@ -175,51 +176,111 @@ public class StadiumsPanel extends JPanel {
         form.setBackground(Color.WHITE);
         form.setBorder(BorderFactory.createEmptyBorder(24, 24, 12, 24));
 
+        // Cargar ciudades reales desde BD
+        List<Ciudad> ciudades = new ArrayList<>();
+        try { ciudades = gestion.listarCiudades(); } catch (Exception ex) { ex.printStackTrace(); }
+
+        String[] nombresCiudad = ciudades.stream()
+                .map(c -> c.getNombre() + " (" + (c.getPais() != null ? c.getPais().getNombre() : "-") + ")")
+                .toArray(String[]::new);
+
         JTextField nombreF = UIFactory.textField("Ej: Estadio Azteca");
-        JTextField ciudadF = UIFactory.textField("Ej: Ciudad de México");
-        JComboBox<String> paisBox = UIFactory.comboBox("México","Estados Unidos","Canadá");
+        JComboBox<String> ciudadBox = nombresCiudad.length > 0
+                ? UIFactory.comboBox(nombresCiudad)
+                : UIFactory.comboBox("(sin ciudades registradas)");
         JTextField capF = UIFactory.textField("Ej: 87523");
 
+        final List<Ciudad> ciudadesFinal = ciudades;
+
+        // Pre-rellenar si es edición
         if (editRow >= 0) {
             nombreF.setText(model.getValueAt(editRow, 1).toString());
-            ciudadF.setText(model.getValueAt(editRow, 2).toString());
-            paisBox.setSelectedItem(model.getValueAt(editRow, 3).toString());
-            capF.setText(model.getValueAt(editRow, 4).toString().replace(",",""));
+            String ciudadEnTabla = model.getValueAt(editRow, 2).toString();
+            String paisEnTabla   = model.getValueAt(editRow, 3).toString();
+            String buscar = ciudadEnTabla + " (" + paisEnTabla + ")";
+            for (int i = 0; i < nombresCiudad.length; i++) {
+                if (nombresCiudad[i].equals(buscar)) {
+                    ciudadBox.setSelectedIndex(i);
+                    break;
+                }
+            }
+            capF.setText(model.getValueAt(editRow, 4).toString().replace(",", ""));
         }
 
         form.add(UIFactory.formLabel("Nombre del Estadio")); form.add(nombreF);
-        form.add(UIFactory.formLabel("Ciudad"));             form.add(ciudadF);
-        form.add(UIFactory.formLabel("País Sede"));          form.add(paisBox);
+        form.add(UIFactory.formLabel("Ciudad"));             form.add(ciudadBox);
         form.add(UIFactory.formLabel("Capacidad"));          form.add(capF);
 
         JPanel footer = buildFooter();
         JButton cancel = UIFactory.outlineButton("Cancelar");
         cancel.addActionListener(e -> dlg.dispose());
+
         JButton save = UIFactory.tealButton(editRow < 0 ? "Guardar" : "Actualizar");
         save.addActionListener(e -> {
+            String nombre = nombreF.getText().trim();
+            if (nombre.isEmpty()) {
+                JOptionPane.showMessageDialog(dlg,
+                        "El nombre del estadio es obligatorio.", "Aviso", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            if (ciudadesFinal.isEmpty()) {
+                JOptionPane.showMessageDialog(dlg,
+                        "No hay ciudades registradas en la base de datos.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            int idxCiudad = ciudadBox.getSelectedIndex();
+            if (idxCiudad < 0 || idxCiudad >= ciudadesFinal.size()) {
+                JOptionPane.showMessageDialog(dlg,
+                        "Selecciona una ciudad válida.", "Aviso", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
             try {
-                int cap = Integer.parseInt(capF.getText().trim().replace(",",""));
-                if (editRow >= 0) {
-                    model.setValueAt(nombreF.getText(), editRow, 1);
-                    model.setValueAt(ciudadF.getText(), editRow, 2);
-                    model.setValueAt(paisBox.getSelectedItem(), editRow, 3);
-                    model.setValueAt(String.format("%,d", cap), editRow, 4);
+                int cap = Integer.parseInt(capF.getText().trim().replace(",", ""));
+                Ciudad ciudadSel = ciudadesFinal.get(idxCiudad);
+
+                if (editRow < 0) {
+                    // CREAR
+                    Estadio nuevo = new Estadio();
+                    nuevo.setNombre(nombre);
+                    nuevo.setCapacidad(cap);
+                    nuevo.setCiudad(ciudadSel);
+                    gestion.crearEstadio(nuevo);
                 } else {
-                    model.addRow(new Object[]{
-                        model.getRowCount() + 1,
-                        nombreF.getText(), ciudadF.getText(),
-                        paisBox.getSelectedItem(),
-                        String.format("%,d", cap), ""
-                    });
+                    // EDITAR — necesitamos el idEstadio original
+                    // Lo obtenemos recargando la lista actual de estadios
+                    List<Estadio> estadiosActuales = gestion.listarEstadios();
+                    String filtro = searchField != null ? searchField.getText().trim().toLowerCase() : "";
+                    List<Estadio> filtrados = estadiosActuales.stream()
+                            .filter(est -> filtro.isEmpty() || est.getNombre().toLowerCase().contains(filtro))
+                            .toList();
+                    if (editRow >= filtrados.size()) {
+                        JOptionPane.showMessageDialog(dlg,
+                                "No se encontró el estadio a editar.", "Error", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                    Estadio existente = filtrados.get(editRow);
+                    existente.setNombre(nombre);
+                    existente.setCapacidad(cap);
+                    existente.setCiudad(ciudadSel);
+                    gestion.actualizarEstadio(existente);
                 }
+
                 dlg.dispose();
+                loadData();
+
             } catch (NumberFormatException ex) {
                 JOptionPane.showMessageDialog(dlg,
                         "La capacidad debe ser un número entero.", "Error", JOptionPane.ERROR_MESSAGE);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(dlg,
+                        "Error al guardar: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
-        footer.add(cancel); footer.add(save);
-        dlg.add(form, BorderLayout.CENTER);
+
+        footer.add(cancel);
+        footer.add(save);
+        dlg.add(form,   BorderLayout.CENTER);
         dlg.add(footer, BorderLayout.SOUTH);
         dlg.setVisible(true);
     }
@@ -227,16 +288,40 @@ public class StadiumsPanel extends JPanel {
     private JPanel buildActionBtns(int row) {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 4));
         p.setOpaque(false);
+
         JButton edit = smallBtn("✏", UIColors.BLUE, UIColors.INFO_BG);
-        edit.addActionListener(e -> showForm(row));
+        edit.addActionListener(e -> { if (row < model.getRowCount()) showForm(row); });
+
         JButton del = smallBtn("🗑", UIColors.RED, UIColors.ERROR_BG);
         del.addActionListener(e -> {
             if (row >= model.getRowCount()) return;
+            String nombreEstadio = model.getValueAt(row, 1).toString();
             int c = JOptionPane.showConfirmDialog(this,
-                    "¿Eliminar este estadio?", "Confirmar", JOptionPane.YES_NO_OPTION);
-            if (c == JOptionPane.YES_OPTION) model.removeRow(row);
+                    "¿Eliminar el estadio \"" + nombreEstadio + "\"?",
+                    "Confirmar", JOptionPane.YES_NO_OPTION);
+            if (c != JOptionPane.YES_OPTION) return;
+            try {
+                List<Estadio> estadiosActuales = gestion.listarEstadios();
+                String filtro = searchField != null ? searchField.getText().trim().toLowerCase() : "";
+                List<Estadio> filtrados = estadiosActuales.stream()
+                        .filter(est -> filtro.isEmpty() || est.getNombre().toLowerCase().contains(filtro))
+                        .toList();
+                if (row >= filtrados.size()) {
+                    JOptionPane.showMessageDialog(this,
+                            "No se encontró el estadio a eliminar.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                gestion.eliminarEstadio(filtrados.get(row).getIdEstadio());
+                loadData();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this,
+                        "Error al eliminar: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
         });
-        p.add(edit); p.add(del);
+
+        p.add(edit);
+        p.add(del);
         return p;
     }
 

@@ -117,17 +117,12 @@ public class DashboardPanel extends JPanel {
         };
 
         int[] values = fetchStats();
-
-        // FIX: guardar referencias a los value labels para poder actualizarlos en refresh()
         statLabels = new JLabel[labels.length];
 
         for (int i = 0; i < labels.length; i++) {
-            // UIFactory.statCard devuelve el panel; necesitamos el JLabel interno.
-            // Creamos el card manualmente para tener referencia al label de valor.
-            JLabel[] valueRef = new JLabel[1];
-            JPanel card = buildStatCard(
-                    String.valueOf(values[i]), labels[i], colors[i], symbols[i], valueRef);
-            statLabels[i] = valueRef[0];
+            JLabel[] ref = new JLabel[1];
+            JPanel card  = buildStatCard(String.valueOf(values[i]), labels[i], colors[i], symbols[i], ref);
+            statLabels[i] = ref[0];
             grid.add(card);
         }
 
@@ -143,28 +138,56 @@ public class DashboardPanel extends JPanel {
      * Versión propia de statCard que expone el JLabel de valor a través de valueRef[0].
      */
     private JPanel buildStatCard(String value, String label, Color accent,
-                                  String symbol, JLabel[] valueRef) {
-        // Intentamos usar UIFactory si expone el valueLabel; si no, construimos manualmente.
-        // Para mantener coherencia visual usamos UIFactory.statCard y buscamos el label.
-        JPanel card = UIFactory.statCard(value, label, accent, symbol);
+                              String symbol, JLabel[] valueRef) {
+        JPanel card = new JPanel(new BorderLayout(14, 0));
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                new RoundedBorder(10, UIColors.BORDER),
+                BorderFactory.createEmptyBorder(18, 18, 18, 18)
+        ));
 
-        // Buscar el JLabel que contiene el número para poder actualizarlo después
-        JLabel found = findValueLabel(card, value);
-        valueRef[0] = found != null ? found : new JLabel(value); // fallback seguro
+        JPanel iconBox = new JPanel() {
+            { setPreferredSize(new Dimension(46, 46)); setOpaque(false); }
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 20));
+                g2.fill(new java.awt.geom.RoundRectangle2D.Float(0, 0, 46, 46, 10, 10));
+                g2.setColor(accent);
+                g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 20));
+                FontMetrics fm = g2.getFontMetrics();
+                g2.drawString(symbol,
+                        (46 - fm.stringWidth(symbol)) / 2,
+                        (46 - fm.getHeight()) / 2 + fm.getAscent());
+                g2.dispose();
+            }
+        };
+
+        JPanel texts = new JPanel();
+        texts.setOpaque(false);
+        texts.setLayout(new BoxLayout(texts, BoxLayout.Y_AXIS));
+
+        JLabel lbl = new JLabel(label);
+        lbl.setFont(UIFonts.STAT_LABEL);
+        lbl.setForeground(UIColors.TEXT_MUTED);
+
+        JLabel num = new JLabel(value);
+        num.setFont(UIFonts.STAT_NUMBER);
+        num.setForeground(UIColors.TEXT_PRIMARY);
+
+        // Guardamos referencia directa al label del número
+        valueRef[0] = num;
+
+        texts.add(lbl);
+        texts.add(Box.createVerticalStrut(2));
+        texts.add(num);
+
+        card.add(iconBox, BorderLayout.WEST);
+        card.add(texts,   BorderLayout.CENTER);
         return card;
     }
 
-    /** Busca recursivamente el primer JLabel cuyo texto coincide con value. */
-    private JLabel findValueLabel(java.awt.Container container, String value) {
-        for (java.awt.Component c : container.getComponents()) {
-            if (c instanceof JLabel lbl && value.equals(lbl.getText())) return lbl;
-            if (c instanceof java.awt.Container sub) {
-                JLabel found = findValueLabel(sub, value);
-                if (found != null) return found;
-            }
-        }
-        return null;
-    }
 
     private JPanel buildWelcomeCard() {
         JPanel card = new JPanel(new BorderLayout()) {

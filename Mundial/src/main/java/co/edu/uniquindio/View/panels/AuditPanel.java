@@ -13,6 +13,9 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.io.File;
+
+
 
 public class AuditPanel extends JPanel {
 
@@ -274,25 +277,197 @@ public class AuditPanel extends JPanel {
     }
 
     private void exportarPDF() {
-        String desdeStr = desdeField.getText().trim();
-        String hastaStr = hastaField.getText().trim();
-        if (desdeStr.isEmpty() || hastaStr.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Define el rango de fechas antes de exportar.",
-                    "Aviso", JOptionPane.WARNING_MESSAGE);
+    String desdeStr = desdeField.getText().trim();
+    String hastaStr = hastaField.getText().trim();
+    if (desdeStr.isEmpty() || hastaStr.isEmpty()) {
+        JOptionPane.showMessageDialog(this,
+                "Define el rango de fechas antes de exportar.",
+                "Aviso", JOptionPane.WARNING_MESSAGE);
+        return;
+    }
+
+    LocalDateTime desde;
+    LocalDateTime hasta;
+    try {
+        desde = LocalDate.parse(desdeStr, FMT_INPUT).atStartOfDay();
+        hasta = LocalDate.parse(hastaStr, FMT_INPUT).atTime(LocalTime.MAX);
+    } catch (DateTimeParseException ex) {
+        JOptionPane.showMessageDialog(this,
+                "Formato de fecha inválido. Usa yyyy-MM-dd",
+                "Error de formato", JOptionPane.ERROR_MESSAGE);
+        return;
+    }
+
+    new SwingWorker<String, Void>() {
+        @Override
+        protected String doInBackground() throws Exception {
+            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+            return mundial.generarReporteBitacora(desde, hasta);
+        }
+        @Override
+        protected void done() {
+            setCursor(Cursor.getDefaultCursor());
+            try {
+                String ruta = get();
+                mostrarVisorPdf(ruta);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(AuditPanel.this,
+                        "Error al generar el PDF: " + ex.getMessage(),
+                        "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }.execute();
+}
+
+    private void mostrarVisorPdf(String pdfPath) {
+        File pdfFile = new File(pdfPath);
+        if (!pdfFile.exists()) {
+            JOptionPane.showMessageDialog(this,
+                    "El PDF no existe en la ruta:\n" + pdfPath,
+                    "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+
+        org.apache.pdfbox.pdmodel.PDDocument doc;
         try {
-            LocalDateTime desde = LocalDate.parse(desdeStr, FMT_INPUT).atStartOfDay();
-            LocalDateTime hasta = LocalDate.parse(hastaStr, FMT_INPUT).atTime(LocalTime.MAX);
-            String ruta = mundial.generarReporteBitacora(desde, hasta);
-            JOptionPane.showMessageDialog(this, "PDF generado:\n" + ruta, "Exportación exitosa",
-                    JOptionPane.INFORMATION_MESSAGE);
+            doc = org.apache.pdfbox.Loader.loadPDF(pdfFile);
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Error al generar el PDF: " + ex.getMessage(),
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this,
+                    "No se pudo abrir el PDF: " + ex.getMessage(),
                     "Error", JOptionPane.ERROR_MESSAGE);
-        } finally {
-            setCursor(Cursor.getDefaultCursor());
+            return;
         }
+
+        final org.apache.pdfbox.rendering.PDFRenderer renderer = new org.apache.pdfbox.rendering.PDFRenderer(doc);
+        final int totalPages = doc.getNumberOfPages();
+        final int[] current  = {0};
+
+        JDialog dlg = new JDialog(SwingUtilities.getWindowAncestor(this),
+                "Vista previa — " + pdfFile.getName(),
+                Dialog.ModalityType.APPLICATION_MODAL);
+        dlg.setSize(860, 920);
+        dlg.setLocationRelativeTo(this);
+        dlg.setLayout(new BorderLayout());
+        dlg.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dlg.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent e) {
+                try { doc.close(); } catch (Exception ignored) {}
+            }
+        });
+
+        // Barra superior con ruta
+        JLabel pathLabel = new JLabel(" " + pdfFile.getAbsolutePath());
+        pathLabel.setFont(UIFonts.BODY_SM);
+        pathLabel.setForeground(UIColors.TEXT_SECONDARY);
+        pathLabel.setOpaque(true);
+        pathLabel.setBackground(new Color(0xF8F9FC));
+        pathLabel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, UIColors.BORDER),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+        dlg.add(pathLabel, BorderLayout.NORTH);
+
+        // Área de imagen
+        JLabel imageLabel = new JLabel();
+        imageLabel.setHorizontalAlignment(JLabel.CENTER);
+        imageLabel.setVerticalAlignment(JLabel.TOP);
+        imageLabel.setBackground(new Color(0xDDDDDD));
+        imageLabel.setOpaque(true);
+
+        JPanel imageContainer = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 16));
+        imageContainer.setBackground(new Color(0xDDDDDD));
+        imageContainer.add(imageLabel);
+
+        JScrollPane scroll = new JScrollPane(imageContainer);
+        scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scroll.getVerticalScrollBar().setUnitIncrement(20);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        dlg.add(scroll, BorderLayout.CENTER);
+
+        // Barra de navegación inferior
+        JPanel nav = new JPanel(new FlowLayout(FlowLayout.CENTER, 14, 10));
+        nav.setBackground(new Color(0xF8F9FC));
+        nav.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, UIColors.BORDER));
+
+        JButton prev         = UIFactory.outlineButton("◀ Anterior");
+        JButton next         = UIFactory.outlineButton("Siguiente ▶");
+        JLabel  pageInfo     = new JLabel();
+        pageInfo.setFont(UIFonts.LABEL_BOLD);
+        pageInfo.setForeground(UIColors.TEXT_PRIMARY);
+        JButton openExternal = UIFactory.tealButton("Abrir en visor externo");
+
+        prev.setEnabled(false);
+        next.setEnabled(totalPages > 1);
+
+        Runnable renderPage = () -> {
+            prev.setEnabled(false);
+            next.setEnabled(false);
+            pageInfo.setText("Cargando...");
+            imageLabel.setIcon(null);
+            imageLabel.setText("Renderizando pagina " + (current[0] + 1) + "...");
+
+            new SwingWorker<java.awt.image.BufferedImage, Void>() {
+                @Override
+                protected java.awt.image.BufferedImage doInBackground() throws Exception {
+                    float dpi = (dlg.getWidth() - 40) / 8.5f;
+                    if (dpi < 80)  dpi = 80;
+                    if (dpi > 150) dpi = 150;
+                    return renderer.renderImageWithDPI(current[0], dpi);
+                }
+                @Override
+                protected void done() {
+                    try {
+                        java.awt.image.BufferedImage img = get();
+                        imageLabel.setIcon(new ImageIcon(img));
+                        imageLabel.setText(null);
+                        pageInfo.setText("Pagina " + (current[0] + 1) + " / " + totalPages);
+                        prev.setEnabled(current[0] > 0);
+                        next.setEnabled(current[0] < totalPages - 1);
+                        scroll.getVerticalScrollBar().setValue(0);
+                        imageContainer.revalidate();
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                        imageLabel.setIcon(null);
+                        imageLabel.setText("Error al renderizar: " + ex.getMessage());
+                    }
+                }
+            }.execute();
+        };
+
+        prev.addActionListener(e -> {
+            if (current[0] > 0) { current[0]--; renderPage.run(); }
+        });
+        next.addActionListener(e -> {
+            if (current[0] < totalPages - 1) { current[0]++; renderPage.run(); }
+        });
+
+        openExternal.addActionListener(e -> {
+            try {
+                if (java.awt.Desktop.isDesktopSupported()
+                        && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.OPEN)) {
+                    java.awt.Desktop.getDesktop().open(pdfFile);
+                } else {
+                    JOptionPane.showMessageDialog(dlg,
+                            "Abre el archivo manualmente en:\n" + pdfFile.getAbsolutePath(),
+                            "Aviso", JOptionPane.INFORMATION_MESSAGE);
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(dlg,
+                        "No se pudo abrir el visor externo:\n" + ex.getMessage(),
+                        "Aviso", JOptionPane.WARNING_MESSAGE);
+            }
+        });
+
+        nav.add(prev);
+        nav.add(pageInfo);
+        nav.add(next);
+        nav.add(Box.createHorizontalStrut(24));
+        nav.add(openExternal);
+        dlg.add(nav, BorderLayout.SOUTH);
+
+        renderPage.run();
+        dlg.setVisible(true);
     }
 }
